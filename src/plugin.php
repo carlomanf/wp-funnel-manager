@@ -26,11 +26,27 @@ class WP_Funnel_Manager
 	 */
 	public function run()
 	{
+		// Load functions
+		add_filter( 'quick_edit_dropdown_pages_args', array( $this, 'funnel_post_parent' ) );
 
 		// Load a funnel
 		$funnel = new Funnel();
 	}
 
+	/**
+	 * Correct the post parent selector for funnel interiors
+	 *
+	 * @since 1.0.3
+	 */
+	public function funnel_post_parent( $args )
+	{
+		global $post;
+		if ( 'funnel_int' !== $post->post_type )
+			return $args;
+
+		$args[ 'post_type' ] = 'funnel';
+		return $args;
+	}
 
 	/**
 	 * Load the plugin text domain.

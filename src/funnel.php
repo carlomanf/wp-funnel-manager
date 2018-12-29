@@ -23,5 +23,11 @@ class Funnel
 				'hierarchical' => true
 			)
 		) );
+
+		register_post_status( 'archive', array(
+		'label'       => _x( 'Published', 'post status' ),
+		'public'      => true,
+		'label_count' => _n_noop( 'Archived <span class="count">(%s)</span>', 'Archived <span class="count">(%s)</span>' ),
+	) );
 	}
 }

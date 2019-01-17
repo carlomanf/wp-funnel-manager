@@ -29,6 +29,7 @@ class WP_Funnel_Manager
 		// Load functions
 		add_filter( 'quick_edit_dropdown_pages_args', array( $this, 'funnel_post_parent' ) );
 		add_filter( 'page_row_actions', array( $this, 'funnel_interior_edit' ), 10, 2 );
+		add_filter( 'post_type_link', array( $this, 'funnel_interior_permalink' ), 10, 2 );
 		add_action( 'init', array( $this, 'post_parent_query_var' ) );
 
 		// Load a funnel
@@ -63,6 +64,27 @@ class WP_Funnel_Manager
 		$actions['edit_interiors'] = '<a href="' . esc_url( $url ) . '">' . __( 'Edit Interiors', 'wpfunnel' ) . '</a>';
 
 		return $actions;
+	}
+
+	/**
+	 * Correct the funnel interior permalink
+	 *
+	 * @since 1.0.4
+	 */
+	public function funnel_interior_permalink( $permalink, $post )
+	{
+		if ( 'funnel_int' !== $post->post_type )
+			return $permalink;
+
+		$replace = '';
+		foreach ( $post->ancestors as $ancestor )
+		{
+			$replace = '/' . get_post( $ancestor )->post_name . $replace;
+		}
+		$replace .= '/';
+
+		$permalink = str_replace( $replace, '/', $permalink );
+		return $permalink;
 	}
 
 	/**

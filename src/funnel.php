@@ -12,17 +12,10 @@ class Funnel
 
 	public function register_taxonomies()
 	{
-		register_taxonomy( 'funnel', array( 'wp_block', 'page' ), array(
-			'hierarchical' => true,
-			'labels'       => array(
-				'name'          => __( 'Funnels', 'wpfunnel' ),
-				'singular_name' => __( 'Funnel', 'wpfunnel' ),
-			),
-			'rewrite'        => array(
-				'slug'         => 'funnel',
-				'hierarchical' => true
-			)
-		) );
+		if ( defined( 'WP_ADMIN' ) && WP_ADMIN )
+			$hierarchical = true;
+		else
+			$hierarchical = false;
 
 		/**
 		 * Post Type: Funnel Interiors.
@@ -49,7 +42,7 @@ class Funnel
 			"exclude_from_search" => false,
 			"capability_type" => "post",
 			"map_meta_cap" => true,
-			"hierarchical" => true,
+			"hierarchical" => $hierarchical,
 			"rewrite" => array( "slug" => "funnel_int", "with_front" => false ),
 			"query_var" => true,
 			"supports" => array( "title", "editor", "thumbnail", "comments", "revisions", "author", "page-attributes" ),

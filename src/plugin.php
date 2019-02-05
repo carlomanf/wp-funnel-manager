@@ -31,9 +31,15 @@ class WP_Funnel_Manager
 		add_filter( 'page_row_actions', array( $this, 'funnel_interior_edit' ), 10, 2 );
 		add_filter( 'post_type_link', array( $this, 'funnel_interior_permalink' ), 10, 2 );
 		add_action( 'init', array( $this, 'post_parent_query_var' ) );
+		add_action( 'admin_menu', array( $this, 'remove_interiors' ) );
 
 		// Load a funnel
 		$funnel = new Funnel();
+	}
+
+	public function remove_interiors()
+	{
+		remove_menu_page('edit.php?post_type=funnel_int');
 	}
 
 	/**

@@ -110,7 +110,8 @@ class WP_Funnel_Manager
 
 	public function interior_without_parent( $post_id, $data )
 	{
-		if ( $data[ 'post_type' ] === 'funnel_int' && $data[ 'post_parent' ] == 0 )
+		$post_parent = get_post( $data[ 'post_parent' ] );
+		if ( $data[ 'post_type' ] === 'funnel_int' && $post_parent->post_type !== 'funnel' )
 		{
 			wp_die( 'Funnel Interiors must be assigned to a Funnel. Please try again.' );
 		}

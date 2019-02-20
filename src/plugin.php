@@ -32,6 +32,7 @@ class WP_Funnel_Manager
 		add_filter( 'post_type_link', array( $this, 'funnel_interior_permalink' ), 10, 2 );
 		add_action( 'init', array( $this, 'post_parent_query_var' ) );
 		add_action( 'admin_menu', array( $this, 'remove_interiors' ) );
+		add_action( 'pre_post_update', array( $this, 'interior_without_parent' ), 10, 2 );
 
 		// Load a funnel
 		$funnel = new Funnel();
@@ -107,6 +108,13 @@ class WP_Funnel_Manager
 		$GLOBALS['wp']->add_query_var( 'post_parent' );
 	}
 
+	public function interior_without_parent( $post_id, $data )
+	{
+		if ( $data[ 'post_type' ] === 'funnel_int' && $data[ 'post_parent' ] == 0 )
+		{
+			wp_die( 'Funnel Interiors must be assigned to a Funnel. Please try again.' );
+		}
+	}
 
 	/**
 	 * Load the plugin text domain.

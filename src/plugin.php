@@ -35,7 +35,7 @@ class WP_Funnel_Manager
 		add_action( 'pre_post_update', array( $this, 'interior_without_parent' ), 10, 2 );
 
 		// Load a funnel
-		$funnel = new Funnel();
+		$funnel = new WPFM_Funnel();
 	}
 
 	public function remove_interiors()

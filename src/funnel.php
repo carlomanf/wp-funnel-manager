@@ -3,7 +3,7 @@
 /**
  * Main funnel class.
  */
-class Funnel
+class WPFM_Funnel
 {
 	public function __construct()
 	{

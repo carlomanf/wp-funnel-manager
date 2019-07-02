@@ -33,6 +33,7 @@ class WP_Funnel_Manager
 		add_action( 'init', array( $this, 'post_parent_query_var' ) );
 		add_action( 'admin_menu', array( $this, 'remove_interiors' ) );
 		add_action( 'pre_post_update', array( $this, 'interior_without_parent' ), 10, 2 );
+		add_action( 'wp_trash_post', array( $this, 'trash_exterior_promote_interior' ) );
 
 		// Load a funnel
 		$funnel = new WPFM_Funnel();
@@ -114,6 +115,26 @@ class WP_Funnel_Manager
 		if ( $data[ 'post_type' ] === 'funnel_int' && $post_parent->post_type !== 'funnel' )
 		{
 			wp_die( 'Funnel Interiors must be assigned to a Funnel. Please try again.' );
+		}
+	}
+
+	public function trash_exterior_promote_interior( $post_id )
+	{
+		$exterior = get_post( $post_id );
+		if ( 'funnel' != $exterior->post_type )
+			return;
+
+		$interiors = get_posts( 'orderby=menu_order&order=ASC&post_type=funnel_int&post_parent=' . $post_id );
+		if ( empty( $interiors[0] ) )
+			return;
+
+		wp_update_post( array( 'ID' => $interiors[0]->ID, 'post_type' => 'funnel' ) );
+		wp_update_post( array( 'ID' => $interiors[0]->ID, 'menu_order' => 0 ) );
+		wp_update_post( array( 'ID' => $interiors[0]->ID, 'post_parent' => 0 ) );
+
+		foreach ( array_slice( $interiors, 1 ) as $interior )
+		{
+			wp_update_post( array( 'ID' => $interior->ID, 'post_parent' => $interiors[0]->ID ) );
 		}
 	}
 

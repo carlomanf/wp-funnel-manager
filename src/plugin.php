@@ -33,6 +33,8 @@ class WP_Funnel_Manager
 		add_action( 'init', array( $this, 'post_parent_query_var' ) );
 		add_action( 'admin_menu', array( $this, 'remove_interiors' ) );
 		add_action( 'pre_post_update', array( $this, 'interior_without_parent' ), 10, 2 );
+		add_filter( 'admin_url', array( $this, 'new_interior' ) );
+		add_filter( 'wp_insert_post_parent', array( $this, 'set_post_parent' ) );
 		add_action( 'wp_trash_post', array( $this, 'trash_exterior_promote_interior' ) );
 
 		// Load a funnel
@@ -109,13 +111,58 @@ class WP_Funnel_Manager
 		$GLOBALS['wp']->add_query_var( 'post_parent' );
 	}
 
+	/**
+	 * Prevent interiors being saved without an exterior
+	 * Hooked to pre_post_update action
+	 *
+	 * @since 1.1.0
+	 */
 	public function interior_without_parent( $post_id, $data )
 	{
-		$post_parent = get_post( $data[ 'post_parent' ] );
-		if ( $data[ 'post_type' ] === 'funnel_int' && $post_parent->post_type !== 'funnel' )
+		if ( $data['post_type'] != 'funnel_int' )
+			return;
+
+		if ( !empty( $_GET['post_parent'] ) && $post_parent = get_post( $_GET['post_parent'] ) && $post_parent->post_type == 'funnel' )
+			$data['post_parent'] = $_GET['post_parent'];
+
+		if ( get_post( $data['post_parent'] )->post_type != 'funnel' )
 		{
 			wp_die( 'Funnel Interiors must be assigned to a Funnel. Please try again.' );
 		}
+	}
+
+	/**
+	 * Pass the post parent GET variable from edit.php to post-new.php
+	 * Hooked to admin_url filter
+	 *
+	 * @since 1.1.0
+	 */
+	public function new_interior( $url )
+	{
+		if ( empty( $_GET['post_type'] ) || empty( $_GET['post_parent'] ) )
+			return $url;
+
+		if ( 'funnel_int' == $_GET['post_type'] )
+			$url = $url . '&post_parent=' . $_GET['post_parent'];
+
+		return $url;
+	}
+
+	/**
+	 * Set the post parent ID upon creation of auto-draft
+	 * Hooked to wp_insert_post_parent filter
+	 *
+	 * @since 1.1.0
+	 */
+	public function set_post_parent( $post_parent_id )
+	{
+		if ( empty( $_GET['post_type'] ) || empty( $_GET['post_parent'] ) )
+			return $post_parent_id;
+
+		if ( 'funnel_int' == $_GET['post_type'] )
+			$post_parent_id = $_GET['post_parent'];
+
+		return $post_parent_id;
 	}
 
 	public function trash_exterior_promote_interior( $post_id )

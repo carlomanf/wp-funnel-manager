@@ -167,7 +167,7 @@ class WP_Funnel_Manager
 
 	public function trash_exterior_promote_interior( $post_id )
 	{
-		if ( $exterior = get_post( $post_id ) && 'funnel' != $exterior->post_type )
+		if ( !( $exterior = get_post( $post_id ) ) || 'funnel' != $exterior->post_type )
 			return;
 
 		$interiors = get_posts( 'orderby=menu_order&order=ASC&post_type=funnel_int&post_parent=' . $post_id );

@@ -71,7 +71,7 @@ class WP_Funnel_Manager
 			return $actions;
 
 		$url = admin_url( 'edit.php?post_type=funnel_int&post_parent=' . $post->ID );
-		$actions['edit_interiors'] = '<a href="' . esc_url( $url ) . '">' . __( 'Edit Interiors', 'wpfunnel' ) . '</a>';
+		$actions['edit_interiors'] = '<a href="' . esc_url( $url ) . '">' . __( 'Edit Steps', 'wpfunnel' ) . '</a>';
 
 		return $actions;
 	}

@@ -145,7 +145,7 @@ class WP_Funnel_Manager
 		if ( 'funnel_int' == $_GET['post_type'] )
 			$url = $url . '&post_parent=' . $_GET['post_parent'];
 
-		return $url;
+		return esc_url( $url );
 	}
 
 	/**
@@ -162,7 +162,7 @@ class WP_Funnel_Manager
 		if ( 'funnel_int' == $_GET['post_type'] )
 			$post_parent_id = $_GET['post_parent'];
 
-		return $post_parent_id;
+		return intval( $post_parent_id );
 	}
 
 	public function trash_exterior_promote_interior( $post_id )

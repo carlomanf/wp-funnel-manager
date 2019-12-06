@@ -3,7 +3,7 @@
  * Plugin Name: WP Funnel Manager
  * Plugin URI:
  * Description: Organises content into multi-step funnels.
- * Version: 1.1.0
+ * Version: 1.2.0-dev
  * Author: Ask Carlo
  * Author URI: https://askcarlo.com
  * Text Domain: wpfunnel

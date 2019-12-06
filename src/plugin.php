@@ -124,6 +124,7 @@ class WP_Funnel_Manager
 		if ( $data['post_type'] != 'funnel_int' )
 			return;
 
+		// Use get variable as post parent if it's valid
 		if ( !empty( $_GET['post_parent'] ) && $post_parent = get_post( $_GET['post_parent'] ) && $post_parent->post_type == 'funnel' )
 			$data['post_parent'] = $_GET['post_parent'];
 
@@ -141,10 +142,11 @@ class WP_Funnel_Manager
 	 */
 	public function new_interior( $url )
 	{
-		if ( empty( $_GET['post_type'] ) || empty( $_GET['post_parent'] ) )
+		if ( empty( $_GET['post_type'] ) || 'funnel_int' != $_GET['post_type'] )
 			return $url;
 
-		if ( 'funnel_int' == $_GET['post_type'] )
+		// Use get variable as post parent if it's valid
+		if ( !empty( $_GET['post_parent'] ) && $post_parent = get_post( $_GET['post_parent'] ) && $post_parent->post_type == 'funnel' )
 			$url = $url . '&post_parent=' . $_GET['post_parent'];
 
 		return esc_url( $url );
@@ -158,10 +160,11 @@ class WP_Funnel_Manager
 	 */
 	public function set_post_parent( $post_parent_id )
 	{
-		if ( empty( $_GET['post_type'] ) || empty( $_GET['post_parent'] ) )
+		if ( empty( $_GET['post_type'] ) || 'funnel_int' != $_GET['post_type'] )
 			return $post_parent_id;
 
-		if ( 'funnel_int' == $_GET['post_type'] )
+		// Use get variable as post parent if it's valid
+		if ( !empty( $_GET['post_parent'] ) && $post_parent = get_post( $_GET['post_parent'] ) && $post_parent->post_type == 'funnel' )
 			$post_parent_id = $_GET['post_parent'];
 
 		return intval( $post_parent_id );

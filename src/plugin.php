@@ -6,6 +6,8 @@
 /**
  * Main plugin class.
  */
+namespace WP_Funnel_Manager;
+
 class WP_Funnel_Manager
 {
 

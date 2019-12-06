@@ -3,7 +3,9 @@
 /**
  * Main funnel class.
  */
-class WPFM_Funnel
+namespace WP_Funnel_Manager;
+
+class Funnel
 {
 	public function __construct()
 	{

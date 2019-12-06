@@ -2,6 +2,7 @@
 /**
  * Initialise the plugin
  */
+namespace WP_Funnel_Manager;
 
 // If this file is called directly, abort.
 if ( ! defined( 'WPINC' ) )

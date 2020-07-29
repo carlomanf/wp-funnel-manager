@@ -85,6 +85,40 @@ class Funnel
 
 		register_post_type( "funnel", $args );
 
+		foreach( get_posts( 'post_type=wp_template' ) as $post )
+		{
+			if ( strpos( $post->post_name, 'single-' ) === 0 )
+			{
+				$slug = str_replace( 'single-', '', $post->post_name );
+				$args = array(
+					"label" => $slug,
+					"labels" => array(
+						"name" => $slug,
+						"singular_name" => $slug,
+					),
+					"description" => "",
+					"public" => true,
+					"publicly_queryable" => true,
+					"show_ui" => true,
+					"show_in_rest" => true,
+					"rest_base" => "",
+					"has_archive" => false,
+					"show_in_menu" => true,
+					"show_in_nav_menus" => true,
+					"exclude_from_search" => false,
+					"capability_type" => $slug,
+					"map_meta_cap" => true,
+					"hierarchical" => false,
+					"rewrite" => array( "slug" => $slug, "with_front" => false ),
+					"query_var" => true,
+					"supports" => array( "title", "editor", "thumbnail", "comments", "revisions", "author", "page-attributes" ),
+				);
+		
+				register_post_type( $slug, $args );
+			}
+
+		}
+
 
 	}
 }

@@ -10,6 +10,18 @@ namespace WP_Funnel_Manager;
 
 class WP_Funnel_Manager
 {
+	/**
+	 * Static instance of the plugin.
+	 */
+	protected static $instance;
+
+	/**
+	 * Funnel types managed by this plugin.
+	 *
+	 * @since 1.2.0
+	 * @var array
+	 */
+	private $funnel_types;
 
 	/**
 	 * Instantiate a WP_Funnel_Manager object.
@@ -19,6 +31,24 @@ class WP_Funnel_Manager
 	 */
 	public function __construct()
 	{
+		foreach( get_posts( 'post_type=wp_template' ) as $post )
+		{
+			$slug = str_replace( 'single-', '', $post->post_name );
+
+			if ( strpos( $post->post_name, 'single-' ) === 0 && strpos( $slug, '-' ) === false )
+			{
+				$this->funnel_types[] = new Funnel_Type( $slug );
+			}
+
+		}
+	}
+
+	public function register_funnel_types()
+	{
+		foreach( $this->funnel_types as $type )
+		{
+			$type->register();
+		}
 	}
 
 	/**
@@ -40,7 +70,7 @@ class WP_Funnel_Manager
 		add_action( 'wp_trash_post', array( $this, 'trash_exterior_promote_interior' ) );
 
 		// Load a funnel
-		$funnel = new WPFM_Funnel();
+		$this->register_funnel_types();
 	}
 
 	public function remove_interiors()

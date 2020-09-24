@@ -81,7 +81,7 @@ class Funnel_Type
 			"hierarchical" => $hierarchical,
 			"rewrite" => array( "slug" => $this->slug . "_int", "with_front" => false ),
 			"query_var" => true,
-			"supports" => array( "title", "editor", "thumbnail", "comments", "revisions", "author", "page-attributes" ),
+			"supports" => array( "title", "editor", "thumbnail", "comments", "revisions", "page-attributes" ),
 		);
 
 		register_post_type( $this->slug . "_int", $args );
@@ -107,7 +107,7 @@ class Funnel_Type
 			"hierarchical" => $hierarchical,
 			"rewrite" => array( "slug" => $this->slug, "with_front" => false ),
 			"query_var" => true,
-			"supports" => array( "title", "editor", "thumbnail", "comments", "revisions", "author", "page-attributes" ),
+			"supports" => array( "title", "editor", "thumbnail", "comments", "revisions", "author" ),
 		);
 
 		register_post_type( $this->slug, $args );

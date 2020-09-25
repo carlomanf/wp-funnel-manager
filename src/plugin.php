@@ -114,6 +114,23 @@ class WP_Funnel_Manager
 	}
 
 	/**
+	 * Validates funnel relationship between exterior and interior
+	 *
+	 * @since 1.2.0
+	 */
+	private function validate_post_parent( $post_parent_id )
+	{	
+		// Use get variable as post parent if it's valid
+		if ( !( $post = get_post( $post_parent_id ) ) )
+			return false;
+
+		if ( $post->post_type != 'funnel' )
+			return false;
+
+		return true;
+	}
+
+	/**
 	 * Prevent interiors being saved without an exterior
 	 * Hooked to pre_post_update action
 	 *
@@ -124,11 +141,7 @@ class WP_Funnel_Manager
 		if ( $data['post_type'] != 'funnel_int' )
 			return;
 
-		// Use get variable as post parent if it's valid
-		if ( !empty( $_GET['post_parent'] ) && $post_parent = get_post( $_GET['post_parent'] ) && $post_parent->post_type == 'funnel' )
-			$data['post_parent'] = $_GET['post_parent'];
-
-		if ( get_post( $data['post_parent'] )->post_type != 'funnel' )
+		if ( empty( $data['post_parent'] ) || !$this->validate_post_parent( $data['post_parent'] ) )
 		{
 			wp_die( 'Funnel Interiors must be assigned to a Funnel. Please try again.' );
 		}
@@ -142,14 +155,15 @@ class WP_Funnel_Manager
 	 */
 	public function new_interior( $url )
 	{
+		// Validate post type
 		if ( empty( $_GET['post_type'] ) || 'funnel_int' != $_GET['post_type'] )
 			return $url;
 
-		// Use get variable as post parent if it's valid
-		if ( !empty( $_GET['post_parent'] ) && $post_parent = get_post( $_GET['post_parent'] ) && $post_parent->post_type == 'funnel' )
-			$url = $url . '&post_parent=' . $_GET['post_parent'];
+		// Validate post parent
+		if ( empty( $_GET['post_parent'] ) || !$this->validate_post_parent( $_GET['post_parent'] ) )
+			return $url;
 
-		return esc_url( $url );
+		return esc_url( $url . '&post_parent=' . $_GET['post_parent'] );
 	}
 
 	/**
@@ -160,14 +174,15 @@ class WP_Funnel_Manager
 	 */
 	public function set_post_parent( $post_parent_id )
 	{
+		// Validate post type
 		if ( empty( $_GET['post_type'] ) || 'funnel_int' != $_GET['post_type'] )
 			return $post_parent_id;
 
-		// Use get variable as post parent if it's valid
-		if ( !empty( $_GET['post_parent'] ) && $post_parent = get_post( $_GET['post_parent'] ) && $post_parent->post_type == 'funnel' )
-			$post_parent_id = $_GET['post_parent'];
+		// Validate post parent
+		if ( empty( $_GET['post_parent'] ) || !$this->validate_post_parent( $_GET['post_parent'] ) )
+			return $post_parent_id;
 
-		return intval( $post_parent_id );
+		return intval( $_GET['post_parent'] );
 	}
 
 	public function trash_exterior_promote_interior( $post_id )

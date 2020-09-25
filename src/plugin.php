@@ -156,14 +156,16 @@ class WP_Funnel_Manager
 	public function new_interior( $url )
 	{
 		// Validate post type
-		if ( empty( $_GET['post_type'] ) || 'funnel_int' != $_GET['post_type'] )
+		if ( 'funnel_int' != get_query_var( 'post_type' ) )
 			return $url;
+
+		$post_parent = get_query_var( 'post_parent' );
 
 		// Validate post parent
-		if ( empty( $_GET['post_parent'] ) || !$this->validate_post_parent( $_GET['post_parent'] ) )
+		if ( !$this->validate_post_parent( $post_parent ) )
 			return $url;
 
-		return esc_url( $url . '&post_parent=' . $_GET['post_parent'] );
+		return $url . '&post_parent=' . $post_parent;
 	}
 
 	/**

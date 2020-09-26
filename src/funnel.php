@@ -28,7 +28,7 @@ class Funnel_Type
 		add_action( 'init', array( $this, 'post_parent_query_var' ) );
 		add_action( 'admin_menu', array( $this, 'remove_interiors' ) );
 		add_action( 'pre_post_update', array( $this, 'interior_without_parent' ), 10, 2 );
-		add_filter( 'admin_url', array( $this, 'new_interior' ) );
+		add_filter( 'admin_url', array( $this, 'new_interior' ), 10, 2 );
 		add_filter( 'wp_insert_post_parent', array( $this, 'set_post_parent' ) );
 		add_action( 'wp_trash_post', array( $this, 'trash_exterior_promote_interior' ) );
 	}
@@ -268,8 +268,12 @@ class Funnel_Type
 	 *
 	 * @since 1.1.0
 	 */
-	public function new_interior( $url )
+	public function new_interior( $url, $path )
 	{
+		// Validate path
+		if ( strpos( $path, 'post-new.php?post_type=' . $this->slug . '_int' ) !== 0 )
+			return $url;
+
 		// Validate post type
 		if ( $this->slug . '_int' != get_query_var( 'post_type' ) )
 			return $url;
@@ -280,7 +284,7 @@ class Funnel_Type
 		if ( !$this->validate_post_parent( $post_parent ) )
 			return $url;
 
-		return $url . '&post_parent=' . $post_parent;
+		return esc_url( $url . '&post_parent=' . $post_parent );
 	}
 
 	/**

@@ -22,6 +22,7 @@ class Funnel_Type
 		add_filter( 'user_has_cap', array( $this, 'assign_admin' ), 10, 4 );
 		add_action( 'wp_roles_init', array( $this, 'add_role' ) );
 		add_filter( 'quick_edit_dropdown_pages_args', array( $this, 'funnel_post_parent' ) );
+		add_filter( 'page_attributes_dropdown_pages_args', array( $this, 'funnel_post_parent' ) );
 		add_filter( 'page_row_actions', array( $this, 'funnel_interior_edit' ), 10, 2 );
 		add_filter( 'post_type_link', array( $this, 'funnel_interior_permalink' ), 10, 2 );
 		add_action( 'init', array( $this, 'post_parent_query_var' ) );

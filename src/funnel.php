@@ -242,6 +242,9 @@ class Funnel_Type
 		if ( $post->post_type != $this->slug )
 			return false;
 
+		if ( $post->post_status == 'trash' || $post->post_status == 'auto-draft' )
+			return false;
+
 		return true;
 	}
 
@@ -311,17 +314,31 @@ class Funnel_Type
 		if ( !( $exterior = get_post( $post_id ) ) || $this->slug != $exterior->post_type )
 			return;
 
-		$interiors = get_posts( 'orderby=menu_order&order=ASC&post_status=any&post_type=' . $this->slug . '_int&post_parent=' . $post_id );
-		if ( empty( $interiors[0] ) )
-			return;
+		$interiors = get_posts( 'numberposts=-1&orderby=menu_order&order=ASC&post_status=any,trash,auto-draft&post_type=' . $this->slug . '_int&post_parent=' . $post_id );
+		$promoted_id = 0;
 
-		wp_update_post( array( 'ID' => $interiors[0]->ID, 'post_type' => $this->slug ) );
-		wp_update_post( array( 'ID' => $interiors[0]->ID, 'menu_order' => 0 ) );
-		wp_update_post( array( 'ID' => $interiors[0]->ID, 'post_parent' => 0 ) );
-
-		foreach ( array_slice( $interiors, 1 ) as $interior )
+		foreach ( $interiors as $interior )
 		{
-			wp_update_post( array( 'ID' => $interior->ID, 'post_parent' => $interiors[0]->ID ) );
+			if ( $interior->post_status != 'trash' && $interior->post_status != 'auto-draft' )
+			{
+				wp_update_post( array( 'ID' => $interior->ID, 'post_type' => $this->slug ) );
+				wp_update_post( array( 'ID' => $interior->ID, 'menu_order' => 0 ) );
+				wp_update_post( array( 'ID' => $interior->ID, 'post_parent' => 0 ) );
+
+				$promoted_id = $interior->ID;
+				break;
+			}
+		}
+
+		if ( !empty( $promoted_id ) )
+		{
+			foreach ( $interiors as $interior )
+			{
+				if ( $interior->ID === $promoted_id )
+					continue;
+
+				wp_update_post( array( 'ID' => $interior->ID, 'post_parent' => $promoted_id ) );
+			}
 		}
 	}
 }

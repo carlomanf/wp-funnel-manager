@@ -33,7 +33,7 @@ class WP_Funnel_Manager
 	{
 		if ( post_type_exists( 'wp_template' ) )
 		{
-			foreach ( get_posts( 'post_type=wp_template' ) as $post )
+			foreach ( get_posts( 'numberposts=-1&post_type=wp_template' ) as $post )
 			{
 				$slug = str_replace( 'single-', '', $post->post_name );
 
@@ -42,7 +42,7 @@ class WP_Funnel_Manager
 					$this->funnel_types[] = new Funnel_Type( $slug, $post );
 				}
 
-				if ( !empty( get_posts( 'post_type=funnel' ) ) )
+				if ( !empty( get_posts( 'numberposts=-1&post_type=funnel&post_status=any,trash' ) ) )
 				{
 					$this->funnel_types[] = new Legacy_Funnel_Type();
 				}

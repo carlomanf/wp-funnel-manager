@@ -21,8 +21,9 @@ if ( ! defined( 'WP_FUNNEL_URL' ) )
 }
 
 // Load classes.
-require WP_FUNNEL_DIR . '/src/funnel.php';
-require WP_FUNNEL_DIR . '/src/plugin.php';
+require WP_FUNNEL_DIR . 'src/funnel.php';
+require WP_FUNNEL_DIR . 'src/legacy.php';
+require WP_FUNNEL_DIR . 'src/plugin.php';
 
 // Initialize the plugin.
 $GLOBALS['wpfunnel'] = new WP_Funnel_Manager();

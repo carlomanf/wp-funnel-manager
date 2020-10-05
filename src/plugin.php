@@ -31,15 +31,26 @@ class WP_Funnel_Manager
 	 */
 	public function __construct()
 	{
-		foreach( get_posts( 'post_type=wp_template' ) as $post )
+		if ( post_type_exists( 'wp_template' ) )
 		{
-			$slug = str_replace( 'single-', '', $post->post_name );
-
-			if ( strpos( $post->post_name, 'single-' ) === 0 && strpos( $slug, '-' ) === false )
+			foreach ( get_posts( 'post_type=wp_template' ) as $post )
 			{
-				$this->funnel_types[] = new Funnel_Type( $slug, $post );
-			}
+				$slug = str_replace( 'single-', '', $post->post_name );
 
+				if ( strpos( $post->post_name, 'single-' ) === 0 && strpos( $slug, '-' ) === false )
+				{
+					$this->funnel_types[] = new Funnel_Type( $slug, $post );
+				}
+
+				if ( !empty( get_posts( 'post_type=funnel' ) ) )
+				{
+					$this->funnel_types[] = new Legacy_Funnel_Type();
+				}
+			}
+		}
+		else
+		{
+			$this->funnel_types[] = new Legacy_Funnel_Type();
 		}
 	}
 

@@ -9,11 +9,54 @@ class Funnel_Type
 {
 	private $slug;
 	private $template;
+	private $editor_role;
+	private $author_role;
+	private $contributor_role;
 
 	public function __construct( $slug, $template )
 	{
 		$this->slug = $slug;
 		$this->template = $template;
+
+		$this->editor_role = array(
+			'name' => 'Editor for ' . $this->slug,
+			'capabilities' => array(
+				'read' => true,
+				'upload_files' => true,
+				'delete_' . $this->slug . '_any' => true,
+				'delete_others_' . $this->slug . '_any' => true,
+				'delete_private_' . $this->slug . '_any' => true,
+				'delete_published_' . $this->slug . '_any' => true,
+				'edit_' . $this->slug . '_any' => true,
+				'edit_others_' . $this->slug . '_any' => true,
+				'edit_private_' . $this->slug . '_any' => true,
+				'edit_published_' . $this->slug . '_any' => true,
+				'publish_' . $this->slug . '_any' => true,
+				'read_private_' . $this->slug . '_any' => true
+			)
+		);
+
+		$this->author_role = array(
+			'name' => 'Author for ' . $this->slug,
+			'capabilities' => array(
+				'read' => true,
+				'upload_files' => true,
+				'delete_' . $this->slug . '_any' => true,
+				'delete_published_' . $this->slug . '_any' => true,
+				'edit_' . $this->slug . '_any' => true,
+				'edit_published_' . $this->slug . '_any' => true,
+				'publish_' . $this->slug . '_any' => true
+			)
+		);
+
+		$this->contributor_role = array(
+			'name' => 'Contributor for ' . $this->slug,
+			'capabilities' => array(
+				'read' => true,
+				'delete_' . $this->slug . '_any' => true,
+				'edit_' . $this->slug . '_any' => true
+			)
+		);
 	}
 
 	public function register()
@@ -77,7 +120,7 @@ class Funnel_Type
 			"show_in_menu" => true,
 			"show_in_nav_menus" => true,
 			"exclude_from_search" => false,
-			"capability_type" => array( $this->slug, $this->slug . '_all' ),
+			"capability_type" => array( $this->slug, $this->slug . '_any' ),
 			"map_meta_cap" => true,
 			"hierarchical" => $hierarchical,
 			"rewrite" => array( "slug" => $this->slug . "_int", "with_front" => false ),
@@ -103,7 +146,7 @@ class Funnel_Type
 			"show_in_menu" => true,
 			"show_in_nav_menus" => true,
 			"exclude_from_search" => false,
-			"capability_type" => array( $this->slug, $this->slug . '_all' ),
+			"capability_type" => array( $this->slug, $this->slug . '_any' ),
 			"map_meta_cap" => true,
 			"hierarchical" => $hierarchical,
 			"rewrite" => array( "slug" => $this->slug, "with_front" => false ),
@@ -119,16 +162,7 @@ class Funnel_Type
 	{
 		if ( $user->ID == $this->template->post_author )
 		{
-			$allcaps[ 'delete_' . $this->slug . '_all' ] = true;
-			$allcaps[ 'delete_others_' . $this->slug . '_all' ] = true;
-			$allcaps[ 'delete_private_' . $this->slug . '_all' ] = true;
-			$allcaps[ 'delete_published_' . $this->slug . '_all' ] = true;
-			$allcaps[ 'edit_' . $this->slug . '_all' ] = true;
-			$allcaps[ 'edit_others_' . $this->slug . '_all' ] = true;
-			$allcaps[ 'edit_private_' . $this->slug . '_all' ] = true;
-			$allcaps[ 'edit_published_' . $this->slug . '_all' ] = true;
-			$allcaps[ 'publish_' . $this->slug . '_all' ] = true;
-			$allcaps[ 'read_private_' . $this->slug . '_all' ] = true;
+			$allcaps = array_merge( $allcaps, $this->editor_role['capabilities'] );
 		}
 
 		return $allcaps;
@@ -137,25 +171,20 @@ class Funnel_Type
 	// Register a role for this funnel type
 	public function add_role( $roles )
 	{
-		$slug = $this->slug . '_admin';
-		$name = 'Admin for ' . $this->slug;
-		$caps = array();
+		$slug = $this->slug . '_editor';
 
-		$caps[ 'read' ] = true;
-		$caps[ 'delete_' . $this->slug . '_all' ] = true;
-		$caps[ 'delete_others_' . $this->slug . '_all' ] = true;
-		$caps[ 'delete_private_' . $this->slug . '_all' ] = true;
-		$caps[ 'delete_published_' . $this->slug . '_all' ] = true;
-		$caps[ 'edit_' . $this->slug . '_all' ] = true;
-		$caps[ 'edit_others_' . $this->slug . '_all' ] = true;
-		$caps[ 'edit_private_' . $this->slug . '_all' ] = true;
-		$caps[ 'edit_published_' . $this->slug . '_all' ] = true;
-		$caps[ 'publish_' . $this->slug . '_all' ] = true;
-		$caps[ 'read_private_' . $this->slug . '_all' ] = true;
+		$roles->role_objects[ $slug ] = new \WP_Role( $slug, $this->editor_role['capabilities'] );
+		$roles->role_names[ $slug ] = $this->editor_role['name'];
 
-		$roles->roles[ $slug ] = array( 'name' => $name, 'capabilities' => $caps );
-		$roles->role_objects[ $slug ] = new \WP_Role( $slug, $caps );
-		$roles->role_names[ $slug ] = $name;
+		$slug = $this->slug . '_author';
+
+		$roles->role_objects[ $slug ] = new \WP_Role( $slug, $this->author_role['capabilities'] );
+		$roles->role_names[ $slug ] = $this->author_role['name'];
+
+		$slug = $this->slug . '_contributor';
+
+		$roles->role_objects[ $slug ] = new \WP_Role( $slug, $this->contributor_role['capabilities'] );
+		$roles->role_names[ $slug ] = $this->contributor_role['name'];
 	}
 
 	public function remove_interiors()

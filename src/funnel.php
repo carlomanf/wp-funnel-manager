@@ -64,6 +64,7 @@ class Funnel_Type
 		add_action( 'init', array( $this, 'register_taxonomies' ) );
 		add_filter( 'user_has_cap', array( $this, 'assign_admin' ), 10, 4 );
 		add_action( 'wp_roles_init', array( $this, 'add_role' ) );
+		add_filter( 'editable_roles', array( $this, 'make_role_editable' ) );
 		add_filter( 'quick_edit_dropdown_pages_args', array( $this, 'funnel_post_parent' ) );
 		add_filter( 'page_attributes_dropdown_pages_args', array( $this, 'funnel_post_parent' ) );
 		add_filter( 'page_row_actions', array( $this, 'funnel_interior_edit' ), 10, 2 );
@@ -157,10 +158,43 @@ class Funnel_Type
 		register_post_type( $this->slug, $args );
 	}
 
-	// Automatically assign the role to the author of the template
+	/**
+	 * Determine whether a user is the owner of this funnel type
+	 * They are an owner if they can edit the original template
+	 *
+	 * @since 1.2.0
+	 */
+	public function user_is_owner( $user )
+	{
+		if ( !post_type_exists( $this->template->post_type ) )
+		return false;
+
+		$super_admin = is_multisite() && is_super_admin( $user->ID );
+
+		foreach ( map_meta_cap( 'edit_post', $user->ID, $this->template ) as $cap )
+		{
+			if ( 'exist' === $cap )
+			continue;
+
+			if ( 'do_not_allow' === $cap )
+			return false;
+
+			if ( empty( $user->allcaps[ $cap ] ) && !$super_admin )
+			return false;
+		}
+
+		return true;
+	}
+
+	/**
+	 * Automatically assign the editor role to the owner(s) of the funnel type
+	 * Hooked to user_has_cap filter
+	 *
+	 * @since 1.2.0
+	 */
 	public function assign_admin( $allcaps, $caps, $args, $user )
 	{
-		if ( $user->ID == $this->template->post_author )
+		if ( $this->user_is_owner( $user ) )
 		{
 			$allcaps = array_merge( $allcaps, $this->editor_role['capabilities'] );
 		}
@@ -185,6 +219,18 @@ class Funnel_Type
 
 		$roles->role_objects[ $slug ] = new \WP_Role( $slug, $this->contributor_role['capabilities'] );
 		$roles->role_names[ $slug ] = $this->contributor_role['name'];
+	}
+
+	public function make_role_editable( $roles )
+	{
+		if ( $this->user_is_owner( wp_get_current_user() ) )
+		{
+			$roles[ $this->slug . '_editor' ] = $this->editor_role;
+			$roles[ $this->slug . '_author' ] = $this->author_role;
+			$roles[ $this->slug . '_contributor' ] = $this->contributor_role;
+		}
+
+		return $roles;
 	}
 
 	public function remove_interiors()

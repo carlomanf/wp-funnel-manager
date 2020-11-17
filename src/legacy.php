@@ -84,10 +84,10 @@ class Legacy_Funnel_Type extends Funnel_Type
 		register_post_type( "funnel", $args );
 	}
 
-	// Legacy funnel type doesn't grant any additional capabilities
-	public function assign_admin( $allcaps, $caps, $args, $user )
+	// Legacy funnel type doesn't have an owner
+	public function user_is_owner( $user )
 	{
-		return $allcaps;
+		return false;
 	}
 
 	// Legacy funnel type can't register roles because it borrows post capabilities

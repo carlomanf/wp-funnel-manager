@@ -21,7 +21,7 @@ class WP_Funnel_Manager
 	 * @since 1.2.0
 	 * @var array
 	 */
-	private $funnel_types;
+	private $funnel_types = array();
 
 	/**
 	 * Instantiate a WP_Funnel_Manager object.
@@ -31,32 +31,56 @@ class WP_Funnel_Manager
 	 */
 	public function __construct()
 	{
-		if ( post_type_exists( 'wp_template' ) )
+		if ( ( $legacy = $this->is_legacy() ) )
+		{
+			$this->funnel_types[] = new Legacy_Funnel_Type();
+		}
+
+		if ( function_exists( 'gutenberg_is_fse_theme' ) && gutenberg_is_fse_theme() )
 		{
 			foreach ( get_posts( 'numberposts=-1&post_type=wp_template' ) as $post )
 			{
-				$slug = str_replace( 'single-', '', $post->post_name );
+				if ( $post->post_status !== 'publish' )
+				continue;
 
-				if ( strpos( $post->post_name, 'single-' ) === 0 && strpos( $slug, '-' ) === false )
-				{
-					$this->funnel_types[] = new Funnel_Type( $slug, $post );
-				}
+				if ( strpos( $post->post_name, 'single-' ) !== 0 )
+				continue;
 
-				if ( !empty( get_posts( 'numberposts=-1&post_type=funnel&post_status=any,trash' ) ) )
-				{
-					$this->funnel_types[] = new Legacy_Funnel_Type();
-				}
+				$slug = substr( $post->post_name, 7 );
+				
+				if ( strpos( $slug, '-' ) !== false )
+				continue;
+
+				if ( $legacy && $slug === 'funnel' )
+				continue;
+
+				if ( substr( $slug, -4 ) === '_int' )
+				continue;
+
+				$this->funnel_types[] = new Funnel_Type( $slug, $post );
 			}
+		}
+	}
+
+	public function is_legacy()
+	{
+		if ( get_option( 'wpfunnel_ignore_legacy' ) )
+		return false;
+
+		if ( empty( get_posts( 'numberposts=-1&post_type=funnel&post_status=any,trash' ) ) )
+		{
+			update_option( 'wpfunnel_ignore_legacy', '1' );
+			return false;
 		}
 		else
 		{
-			$this->funnel_types[] = new Legacy_Funnel_Type();
+			return true;
 		}
 	}
 
 	public function register_funnel_types()
 	{
-		foreach( $this->funnel_types as $type )
+		foreach ( $this->funnel_types as $type )
 		{
 			$type->register();
 		}
@@ -69,8 +93,19 @@ class WP_Funnel_Manager
 	 */
 	public function run()
 	{
-		// Load a funnel
-		$this->register_funnel_types();
+		if ( empty( $this->funnel_types ) )
+		{
+			add_action( 'admin_footer', array( $this, 'no_funnels_notice' ) );
+		}
+		else
+		{
+			$this->register_funnel_types();
+		}
+	}
+
+	public function no_funnels_notice()
+	{
+		echo '<div class="notice notice-warning"><p>Thank you for activating WP Funnel Manager! To start building funnels, ensure your active theme supports Full Site Editing.</p></div>';
 	}
 
 	/**

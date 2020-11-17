@@ -405,7 +405,17 @@ class Funnel_Type
 			}
 		}
 
-		if ( !empty( $promoted_id ) )
+		// If nothing promoted, promote everything
+		if ( empty( $promoted_id ) )
+		{
+			foreach ( $interiors as $interior )
+			{
+				wp_update_post( array( 'ID' => $interior->ID, 'post_type' => $this->slug ) );
+				wp_update_post( array( 'ID' => $interior->ID, 'menu_order' => 0 ) );
+				wp_update_post( array( 'ID' => $interior->ID, 'post_parent' => 0 ) );
+			}
+		}
+		else
 		{
 			foreach ( $interiors as $interior )
 			{

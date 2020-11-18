@@ -65,10 +65,7 @@ class Funnel_Type
 		add_filter( 'user_has_cap', array( $this, 'assign_admin' ), 10, 4 );
 		add_action( 'wp_roles_init', array( $this, 'add_role' ) );
 		add_filter( 'editable_roles', array( $this, 'make_role_editable' ) );
-		add_filter( 'quick_edit_dropdown_pages_args', array( $this, 'funnel_post_parent' ) );
-		add_filter( 'page_attributes_dropdown_pages_args', array( $this, 'funnel_post_parent' ) );
-		add_filter( 'page_row_actions', array( $this, 'funnel_interior_edit' ), 10, 2 );
-		add_filter( 'post_type_link', array( $this, 'funnel_interior_permalink' ), 10, 2 );
+		add_filter( 'post_row_actions', array( $this, 'funnel_interior_edit' ), 10, 2 );
 		add_action( 'init', array( __CLASS__, 'post_parent_query_var' ) );
 		add_action( 'admin_menu', array( $this, 'remove_interiors' ) );
 		add_action( 'pre_post_update', array( $this, 'interior_without_parent' ), 10, 2 );
@@ -100,9 +97,6 @@ class Funnel_Type
 
 	public function register_taxonomies()
 	{
-		// Only register as hierarchical in admin
-		$hierarchical = is_admin();
-			
 		$labels = array(
 			"name" => __( "Interiors", "wpfunnel" ),
 			"singular_name" => __( "Interior", "wpfunnel" ),
@@ -123,7 +117,7 @@ class Funnel_Type
 			"exclude_from_search" => false,
 			"capability_type" => array( $this->slug, $this->slug . '_any' ),
 			"map_meta_cap" => true,
-			"hierarchical" => $hierarchical,
+			"hierarchical" => false,
 			"rewrite" => array( "slug" => $this->slug . "_int", "with_front" => false ),
 			"query_var" => true,
 			"supports" => array( "title", "editor", "thumbnail", "comments", "revisions", "page-attributes" ),
@@ -149,7 +143,7 @@ class Funnel_Type
 			"exclude_from_search" => false,
 			"capability_type" => array( $this->slug, $this->slug . '_any' ),
 			"map_meta_cap" => true,
-			"hierarchical" => $hierarchical,
+			"hierarchical" => false,
 			"rewrite" => array( "slug" => $this->slug, "with_front" => false ),
 			"query_var" => true,
 			"supports" => array( "title", "editor", "thumbnail", "comments", "revisions", "author" ),
@@ -239,21 +233,6 @@ class Funnel_Type
 	}
 
 	/**
-	 * Correct the post parent selector for funnel interiors
-	 *
-	 * @since 1.0.3
-	 */
-	public function funnel_post_parent( $args )
-	{
-		global $post;
-		if ( $this->slug . '_int' !== $post->post_type )
-			return $args;
-
-		$args[ 'post_type' ] = $this->slug;
-		return $args;
-	}
-
-	/**
 	 * Add a link to view and edit funnel interiors
 	 *
 	 * @since 1.0.3
@@ -266,27 +245,6 @@ class Funnel_Type
 		$actions['edit_interiors'] = '<a href="' . esc_url( $url ) . '">' . __( 'Edit Steps', 'wpfunnel' ) . '</a>';
 
 		return $actions;
-	}
-
-	/**
-	 * Correct the funnel interior permalink
-	 *
-	 * @since 1.0.4
-	 */
-	public function funnel_interior_permalink( $permalink, $post )
-	{
-		if ( $this->slug . '_int' !== $post->post_type )
-			return $permalink;
-
-		$replace = '';
-		foreach ( $post->ancestors as $ancestor )
-		{
-			$replace = '/' . get_post( $ancestor )->post_name . $replace;
-		}
-		$replace .= '/';
-
-		$permalink = str_replace( $replace, '/', $permalink );
-		return $permalink;
 	}
 
 	/**

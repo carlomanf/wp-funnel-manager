@@ -84,6 +84,18 @@ class Legacy_Funnel_Type extends Funnel_Type
 		register_post_type( "funnel", $args );
 	}
 
+	public function register()
+	{
+		parent::register();
+
+		add_filter( 'post_type_link', array( $this, 'funnel_interior_permalink' ), 10, 2 );
+		add_filter( 'quick_edit_dropdown_pages_args', array( $this, 'funnel_post_parent' ) );
+		add_filter( 'page_attributes_dropdown_pages_args', array( $this, 'funnel_post_parent' ) );
+		
+		remove_filter( 'post_row_actions', array( $this, 'funnel_interior_edit' ), 10, 2 );
+		add_filter( 'page_row_actions', array( $this, 'funnel_interior_edit' ), 10, 2 );
+	}
+
 	// Legacy funnel type doesn't have an owner
 	public function user_is_owner( $user )
 	{
@@ -94,5 +106,41 @@ class Legacy_Funnel_Type extends Funnel_Type
 	public function add_role( $roles )
 	{
 		return;
+	}
+
+	/**
+	 * Correct the funnel interior permalink
+	 *
+	 * @since 1.0.4
+	 */
+	public function funnel_interior_permalink( $permalink, $post )
+	{
+		if ( 'funnel_int' !== $post->post_type )
+			return $permalink;
+
+		$replace = '';
+		foreach ( $post->ancestors as $ancestor )
+		{
+			$replace = '/' . get_post( $ancestor )->post_name . $replace;
+		}
+		$replace .= '/';
+
+		$permalink = str_replace( $replace, '/', $permalink );
+		return $permalink;
+	}
+
+	/**
+	 * Correct the post parent selector for funnel interiors
+	 *
+	 * @since 1.0.3
+	 */
+	public function funnel_post_parent( $args )
+	{
+		global $post;
+		if ( 'funnel_int' !== $post->post_type )
+			return $args;
+
+		$args[ 'post_type' ] = 'funnel';
+		return $args;
 	}
 }

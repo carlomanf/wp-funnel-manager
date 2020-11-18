@@ -69,7 +69,7 @@ class Funnel_Type
 		add_filter( 'page_attributes_dropdown_pages_args', array( $this, 'funnel_post_parent' ) );
 		add_filter( 'page_row_actions', array( $this, 'funnel_interior_edit' ), 10, 2 );
 		add_filter( 'post_type_link', array( $this, 'funnel_interior_permalink' ), 10, 2 );
-		add_action( 'init', array( $this, 'post_parent_query_var' ) );
+		add_action( 'init', array( __CLASS__, 'post_parent_query_var' ) );
 		add_action( 'admin_menu', array( $this, 'remove_interiors' ) );
 		add_action( 'pre_post_update', array( $this, 'interior_without_parent' ), 10, 2 );
 		add_filter( 'admin_url', array( $this, 'new_interior' ), 10, 2 );
@@ -295,7 +295,7 @@ class Funnel_Type
 	 *
 	 * @since 1.0.3
 	 */
-	public function post_parent_query_var()
+	public static function post_parent_query_var()
 	{
 		if ( !is_admin() )
 			return;

@@ -143,4 +143,19 @@ class Legacy_Funnel_Type extends Funnel_Type
 		$args[ 'post_type' ] = 'funnel';
 		return $args;
 	}
+
+	public function setup_interior( $data )
+	{
+		$new_data = parent::setup_interior( $data );
+
+		// Don't replace the post author
+		$new_data['post_author'] = $data['post_author'];
+
+		return $new_data;
+	}
+
+	public function update_post_author( $post_id, $post )
+	{
+		return;
+	}
 }

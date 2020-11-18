@@ -68,9 +68,9 @@ class Funnel_Type
 		add_filter( 'post_row_actions', array( $this, 'funnel_interior_edit' ), 10, 2 );
 		add_action( 'init', array( __CLASS__, 'post_parent_query_var' ) );
 		add_action( 'admin_menu', array( $this, 'remove_interiors' ) );
-		add_action( 'pre_post_update', array( $this, 'interior_without_parent' ), 10, 2 );
+		add_filter( 'wp_insert_post_data', array( $this, 'setup_interior' ) );
+		add_action( 'save_post', array( $this, 'update_post_author' ), 10, 2 );
 		add_filter( 'admin_url', array( $this, 'new_interior' ), 10, 2 );
-		add_filter( 'wp_insert_post_parent', array( $this, 'set_post_parent' ) );
 		add_action( 'wp_trash_post', array( $this, 'trash_exterior_promote_interior' ) );
 	}
 
@@ -262,13 +262,15 @@ class Funnel_Type
 	}
 	
 	/**
-	 * Validates funnel relationship between exterior and interior
+	 * Validates whether the supplied post ID is a valid exterior
+	 * for this funnel type, that the current user can edit.
+	 * 
+	 * Returns the post if valid, or false if no valid post.
 	 *
 	 * @since 1.2.0
 	 */
 	private function validate_post_parent( $post_parent_id )
 	{	
-		// Use get variable as post parent if it's valid
 		if ( !( $post = get_post( $post_parent_id ) ) )
 			return false;
 
@@ -278,23 +280,51 @@ class Funnel_Type
 		if ( $post->post_status == 'trash' || $post->post_status == 'auto-draft' )
 			return false;
 
-		return true;
+		if ( !current_user_can( 'edit_post', $post ) )
+			return false;
+
+		return $post;
 	}
 
 	/**
-	 * Prevent interiors being saved without an exterior
-	 * Hooked to pre_post_update action
+	 * Prevent interiors being saved without a valid exterior
+	 * and align the post author with the exterior
+	 * Hooked to wp_insert_post_data filter
 	 *
-	 * @since 1.1.0
+	 * @since 1.2.0
 	 */
-	public function interior_without_parent( $post_id, $data )
+	public function setup_interior( $data )
 	{
 		if ( $data['post_type'] != $this->slug . '_int' )
-			return;
+		{
+			return $data;
+		}
 
-		if ( empty( $data['post_parent'] ) || !$this->validate_post_parent( $data['post_parent'] ) )
+		if ( empty( $data['post_parent'] ) && !empty( $_GET['post_parent'] ) )
+		{
+			$data['post_parent'] = intval( $_GET['post_parent'] );
+		}
+
+		if ( !( $exterior = $this->validate_post_parent( $data['post_parent'] ) ) )
 		{
 			wp_die( 'Funnel Interiors must be assigned to a Funnel. Please try again.' );
+		}
+
+		$data['post_author'] = $exterior->post_author;
+		
+		return $data;
+	}
+
+	public function update_post_author( $post_id, $post )
+	{
+		if ( $this->slug != $post->post_type )
+			return;
+
+		$interiors = get_posts( 'numberposts=-1&post_status=any,trash,auto-draft&post_type=' . $this->slug . '_int&post_parent=' . $post_id );
+		
+		foreach ( $interiors as $interior )
+		{
+			wp_update_post( array( 'ID' => $interior->ID, 'post_author' => $post->post_author ) );
 		}
 	}
 
@@ -321,25 +351,6 @@ class Funnel_Type
 			return $url;
 
 		return esc_url( $url . '&post_parent=' . $post_parent );
-	}
-
-	/**
-	 * Set the post parent ID upon creation of auto-draft
-	 * Hooked to wp_insert_post_parent filter
-	 *
-	 * @since 1.1.0
-	 */
-	public function set_post_parent( $post_parent_id )
-	{
-		// Validate post type
-		if ( empty( $_GET['post_type'] ) || $this->slug . '_int' != $_GET['post_type'] )
-			return $post_parent_id;
-
-		// Validate post parent
-		if ( empty( $_GET['post_parent'] ) || !$this->validate_post_parent( $_GET['post_parent'] ) )
-			return $post_parent_id;
-
-		return intval( $_GET['post_parent'] );
 	}
 
 	public function trash_exterior_promote_interior( $post_id )

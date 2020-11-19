@@ -79,6 +79,7 @@ class Legacy_Funnel_Type extends Funnel_Type
 			"rewrite" => array( "slug" => "funnel", "with_front" => false ),
 			"query_var" => true,
 			"supports" => array( "title", "editor", "thumbnail", "comments", "revisions", "author", "page-attributes" ),
+			"menu_icon" => "dashicons-filter"
 		);
 
 		register_post_type( "funnel", $args );

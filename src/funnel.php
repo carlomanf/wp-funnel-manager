@@ -147,6 +147,7 @@ class Funnel_Type
 			"rewrite" => array( "slug" => $this->slug, "with_front" => false ),
 			"query_var" => true,
 			"supports" => array( "title", "editor", "thumbnail", "comments", "revisions", "author" ),
+			"menu_icon" => "dashicons-filter"
 		);
 
 		register_post_type( $this->slug, $args );

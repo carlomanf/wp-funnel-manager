@@ -62,7 +62,7 @@ class Funnel_Type
 	public function register()
 	{
 		add_action( 'init', array( $this, 'register_taxonomies' ) );
-		add_filter( 'user_has_cap', array( $this, 'assign_admin' ), 10, 4 );
+		add_filter( 'map_meta_cap', array( $this, 'assign_admin' ), 10, 4 );
 		add_action( 'wp_roles_init', array( $this, 'add_role' ) );
 		add_filter( 'editable_roles', array( $this, 'make_role_editable' ) );
 		add_filter( 'post_row_actions', array( $this, 'funnel_interior_edit' ), 10, 2 );
@@ -164,37 +164,24 @@ class Funnel_Type
 		if ( !post_type_exists( $this->template->post_type ) )
 		return false;
 
-		$super_admin = is_multisite() && is_super_admin( $user->ID );
-
-		foreach ( map_meta_cap( 'edit_post', $user->ID, $this->template ) as $cap )
-		{
-			if ( 'exist' === $cap )
-			continue;
-
-			if ( 'do_not_allow' === $cap )
-			return false;
-
-			if ( empty( $user->allcaps[ $cap ] ) && !$super_admin )
-			return false;
-		}
-
-		return true;
+		return user_can( $user, 'edit_post', $this->template );
 	}
 
 	/**
 	 * Automatically assign the editor role to the owner(s) of the funnel type
-	 * Hooked to user_has_cap filter
+	 * Hooked to map_meta_cap filter
 	 *
 	 * @since 1.2.0
 	 */
-	public function assign_admin( $allcaps, $caps, $args, $user )
+	public function assign_admin( $caps, $cap, $user, $args )
 	{
-		if ( $this->user_is_owner( $user ) )
-		{
-			$allcaps = array_merge( $allcaps, $this->editor_role['capabilities'] );
-		}
+		if ( !in_array( $cap, array_keys( $this->editor_role['capabilities'] ) ) )
+		return $caps;
 
-		return $allcaps;
+		if ( !$this->user_is_owner( $user ) )
+		return $caps;
+
+		return array( 'exist' );
 	}
 
 	// Register a role for this funnel type

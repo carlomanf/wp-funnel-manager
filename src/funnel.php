@@ -175,13 +175,18 @@ class Funnel_Type
 	 */
 	public function assign_admin( $caps, $cap, $user, $args )
 	{
-		if ( !in_array( $cap, array_keys( $this->editor_role['capabilities'] ) ) )
-		return $caps;
+		foreach ( $caps as &$capability )
+		{
+			if ( !in_array( $capability, array_keys( $this->editor_role['capabilities'] ) ) )
+			continue;
 
-		if ( !$this->user_is_owner( $user ) )
-		return $caps;
+			if ( !$this->user_is_owner( $user ) )
+			continue;
 
-		return array( 'exist' );
+			$capability = 'exist';
+		}
+
+		return $caps;
 	}
 
 	// Register a role for this funnel type

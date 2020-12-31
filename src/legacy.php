@@ -45,7 +45,7 @@ class Legacy_Funnel_Type extends Funnel_Type
 			"hierarchical" => $hierarchical,
 			"rewrite" => array( "slug" => "funnel_int", "with_front" => false ),
 			"query_var" => true,
-			"supports" => array( "title", "editor", "thumbnail", "comments", "revisions", "author", "page-attributes" ),
+			"supports" => array( "title", "editor", "thumbnail", "comments", "revisions", "author", "page-attributes", "custom-fields" ),
 		);
 
 		register_post_type( "funnel_int", $args );
@@ -78,7 +78,7 @@ class Legacy_Funnel_Type extends Funnel_Type
 			"hierarchical" => true,
 			"rewrite" => array( "slug" => "funnel", "with_front" => false ),
 			"query_var" => true,
-			"supports" => array( "title", "editor", "thumbnail", "comments", "revisions", "author", "page-attributes" ),
+			"supports" => array( "title", "editor", "thumbnail", "comments", "revisions", "author", "page-attributes", "custom-fields" ),
 			"menu_icon" => "dashicons-filter"
 		);
 

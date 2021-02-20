@@ -61,42 +61,16 @@ class Funnel_Type
 
 	public function register()
 	{
-		add_action( 'init', array( $this, 'register_taxonomies' ) );
 		add_filter( 'map_meta_cap', array( $this, 'assign_admin' ), 10, 4 );
 		add_action( 'wp_roles_init', array( $this, 'add_role' ) );
 		add_filter( 'editable_roles', array( $this, 'make_role_editable' ) );
 		add_filter( 'post_row_actions', array( $this, 'funnel_interior_edit' ), 10, 2 );
-		add_action( 'init', array( __CLASS__, 'post_parent_query_var' ) );
 		add_action( 'admin_menu', array( $this, 'remove_interiors' ) );
 		add_filter( 'wp_insert_post_data', array( $this, 'setup_interior' ) );
 		add_action( 'save_post', array( $this, 'update_post_author' ), 10, 2 );
 		add_filter( 'admin_url', array( $this, 'new_interior' ), 10, 2 );
 		add_action( 'wp_trash_post', array( $this, 'trash_exterior_promote_interior' ) );
-	}
 
-	public function get_all_funnels()
-	{
-		$exteriors = get_posts( 'post_type=' . $this->slug );
-		$funnels = array();
-
-		foreach ( $exteriors as $exterior )
-		{
-			$steps = array( $exterior );
-			$interiors = get_posts( 'post_type=' . $this->slug . '_int&post_parent=' . $exterior->ID );
-
-			foreach ( $interiors as $interior )
-			{
-				$steps[] = $interior;
-			}
-
-			$funnels[] = new Funnel( $exterior->ID, $steps );
-		}
-
-		return $funnels;
-	}
-
-	public function register_taxonomies()
-	{
 		$labels = array(
 			"name" => __( "Interiors", "wpfunnel" ),
 			"singular_name" => __( "Interior", "wpfunnel" ),
@@ -151,6 +125,32 @@ class Funnel_Type
 		);
 
 		register_post_type( $this->slug, $args );
+	}
+
+	public function get_all_funnels()
+	{
+		$exteriors = get_posts( 'post_type=' . $this->slug );
+		$funnels = array();
+
+		foreach ( $exteriors as $exterior )
+		{
+			$steps = array( $exterior );
+			$interiors = get_posts( 'post_type=' . $this->slug . '_int&post_parent=' . $exterior->ID );
+
+			foreach ( $interiors as $interior )
+			{
+				$steps[] = $interior;
+			}
+
+			$funnels[] = new Funnel( $exterior->ID, $steps );
+		}
+
+		return $funnels;
+	}
+
+	public function template()
+	{
+		return $this->template;
 	}
 
 	/**
@@ -238,20 +238,6 @@ class Funnel_Type
 		$actions['edit_interiors'] = '<a href="' . esc_url( $url ) . '">' . __( 'Edit Steps', 'wpfunnel' ) . '</a>';
 
 		return $actions;
-	}
-
-	/**
-	 * Allow post parent as query var
-	 * This is needed to view funnel interiors
-	 *
-	 * @since 1.0.3
-	 */
-	public static function post_parent_query_var()
-	{
-		if ( !is_admin() )
-			return;
-
-		$GLOBALS['wp']->add_query_var( 'post_parent' );
 	}
 	
 	/**

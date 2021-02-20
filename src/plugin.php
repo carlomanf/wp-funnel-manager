@@ -24,14 +24,6 @@ class WP_Funnel_Manager
 	private $funnel_types = array();
 
 	/**
-	 * Registered funnel types managed by this plugin.
-	 *
-	 * @since 1.2.0
-	 * @var array
-	 */
-	private $registered_funnel_types = array();
-
-	/**
 	 * Instantiate a WP_Funnel_Manager object.
 	 *
 	 * Don't call the constructor directly, use the `WP_Funnel_Manager::get_instance()`
@@ -39,8 +31,6 @@ class WP_Funnel_Manager
 	 */
 	public function __construct()
 	{
-		$this->theme = wp_get_theme()->get_stylesheet();
-		
 		if ( ( $legacy = $this->is_legacy() ) )
 		{
 			$this->funnel_types[] = new Legacy_Funnel_Type();
@@ -90,29 +80,9 @@ class WP_Funnel_Manager
 
 	public function register_funnel_types()
 	{
-		$this->registered_funnel_types = array();
-
 		foreach ( $this->funnel_types as $type )
 		{
-			if ( has_term( $this->theme, 'wp_theme', $type->template() ) )
-			{
-				$type->register();
-				$this->registered_funnel_types[] = $type;
-			}
-		}
-
-		if ( empty( $this->registered_funnel_types ) )
-		{
-			add_action( 'admin_footer', array( $this, 'no_funnels_notice' ) );
-		}
-		else
-		{
-			/**
-			 * Allow post parent as query var
-			 * This is needed to view funnel interiors
-			 */
-			if ( is_admin() )
-			$GLOBALS['wp']->add_query_var( 'post_parent' );
+			$type->register();
 		}
 	}
 
@@ -123,7 +93,14 @@ class WP_Funnel_Manager
 	 */
 	public function run()
 	{
-		add_action( 'init', array( $this, 'register_funnel_types' ) );
+		if ( empty( $this->funnel_types ) )
+		{
+			add_action( 'admin_footer', array( $this, 'no_funnels_notice' ) );
+		}
+		else
+		{
+			$this->register_funnel_types();
+		}
 	}
 
 	public function no_funnels_notice()

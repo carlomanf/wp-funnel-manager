@@ -70,6 +70,7 @@ class Funnel_Type
 		add_action( 'save_post', array( $this, 'update_post_author' ), 10, 2 );
 		add_filter( 'admin_url', array( $this, 'new_interior' ), 10, 2 );
 		add_action( 'wp_trash_post', array( $this, 'trash_exterior_promote_interior' ) );
+		add_filter( 'single_template_hierarchy', array( $this, 'apply_template_to_interior' ) );
 
 		$labels = array(
 			"name" => __( "Interiors", "wpfunnel" ),
@@ -151,6 +152,14 @@ class Funnel_Type
 	public function template()
 	{
 		return $this->template;
+	}
+
+	public function apply_template_to_interior( $templates )
+	{
+		if ( in_array( 'single-' . $this->slug . '_int.php', $templates ) )
+		array_splice( $templates, -1, 0, 'single-' . $this->slug . '.php' );
+	
+		return $templates;
 	}
 
 	/**

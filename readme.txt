@@ -48,6 +48,19 @@ Through the WordPress support forum, or on the [GitHub page here.](https://githu
 
 == Changelog ==
 
+= 1.2.0 =
+* New funnel types for full site editing (#11)
+  * New user roles and capabilities
+  * One author per funnel
+  * Removed hierarchical post type
+  * Retain all old behaviour for existing funnels
+* Use a namespace
+* Fixed more bugs with trashing funnel (#6)
+* New menu icon
+* Added support for custom fields
+* Apply exterior theme templates to interior (#12)
+* Other bug fixes and enhancements
+
 = 1.1.0 =
 * Add readme for wordpress plugin directory
 * Promote first interior when exterior is trashed

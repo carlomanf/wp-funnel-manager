@@ -2,8 +2,8 @@
 Contributors: manfcarlo
 Tags: funnel, funnels, marketing, sales
 Requires at least: 5.0
-Tested up to: 5.2
-Stable tag: 1.1.0
+Tested up to: 5.7
+Stable tag: 1.2.0
 Requires PHP: 5.6
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -33,6 +33,10 @@ To add more steps to your funnel, visit the funnel in the Funnels screen and cli
 Repeat this process for each step of the funnel. Make sure you use the WordPress menu order feature to arrange the steps of your funnel in the correct order.
 
 == Frequently Asked Questions ==
+
+= Why don't I see anything in the admin menu? =
+
+You must activate a theme that supports full site editing, and then you will see Funnels in the admin menu. [Click here for more information.](https://make.wordpress.org/design/handbook/focuses/full-site-editing/)
 
 = How do I delete the first step of my funnel without deleting the whole funnel? =
 

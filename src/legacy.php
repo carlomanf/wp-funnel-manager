@@ -9,85 +9,40 @@ class Legacy_Funnel_Type extends Funnel_Type
 {
 	public function __construct()
 	{
-		parent::__construct( 'funnel', null );
-	}
+		parent::__construct( 'funnel', (object) array( 'post_title' => '' ) );
 
-	public function register_taxonomies()
-	{
-		// Only register as hierarchical in admin
-		$hierarchical = is_admin();
-			
-		/**
-		 * Post Type: Funnel Interiors.
-		 * Temporary until funnel infrastructure is ready
-		 */
-
-        $labels = array(
-			"name" => __( "Interiors", "wpfunnel" ),
-			"singular_name" => __( "Interior", "wpfunnel" ),
-		);
-
-		$args = array(
-			"label" => __( "Interiors", "wpfunnel" ),
-			"labels" => $labels,
-			"description" => "",
-			"public" => true,
-			"publicly_queryable" => true,
-			"show_ui" => true,
-			"show_in_rest" => true,
-			"rest_base" => "",
-			"has_archive" => false,
-			"show_in_menu" => true,
-			"show_in_nav_menus" => true,
-			"exclude_from_search" => false,
-			"capability_type" => "post",
-			"map_meta_cap" => true,
-			"hierarchical" => $hierarchical,
-			"rewrite" => array( "slug" => "funnel_int", "with_front" => false ),
-			"query_var" => true,
-			"supports" => array( "title", "editor", "thumbnail", "comments", "revisions", "author", "page-attributes", "custom-fields" ),
-		);
-
-		register_post_type( "funnel_int", $args );
-
-		/**
-		 * Post Type: Funnel Exteriors.
-		 * Temporary until funnel infrastructure is ready
-		 */
-
-		$labels = array(
-			"name" => __( "Funnels", "wpfunnel" ),
-			"singular_name" => __( "Funnel", "wpfunnel" ),
-		);
-
-		$args = array(
-			"label" => __( "Funnels", "wpfunnel" ),
-			"labels" => $labels,
-			"description" => "",
-			"public" => true,
-			"publicly_queryable" => true,
-			"show_ui" => true,
-			"show_in_rest" => true,
-			"rest_base" => "",
-			"has_archive" => false,
-			"show_in_menu" => true,
-			"show_in_nav_menus" => true,
-			"exclude_from_search" => false,
-			"capability_type" => "post",
-			"map_meta_cap" => true,
-			"hierarchical" => true,
-			"rewrite" => array( "slug" => "funnel", "with_front" => false ),
-			"query_var" => true,
-			"supports" => array( "title", "editor", "thumbnail", "comments", "revisions", "author", "page-attributes", "custom-fields" ),
-			"menu_icon" => "dashicons-filter"
-		);
-
-		register_post_type( "funnel", $args );
+		$this->editor_role = null;
+		$this->author_role = null;
+		$this->contributor_role = null;
 	}
 
 	public function register()
 	{
 		parent::register();
+
+		$this->exterior_args['label'] = __( 'Funnels', 'wpfunnel' );
+
+		$this->exterior_args['labels'] = array(
+			'name' => __( 'Funnels', 'wpfunnel' ),
+			'singular_name' => __( 'Funnel', 'wpfunnel' )
+		);
+
+		$this->exterior_args['hierarchical'] = true;
+		$this->exterior_args['show_in_menu'] = false;
+		$this->exterior_args['capability_type'] = 'post';
+		$this->exterior_args['supports'][] = 'page-attributes';
+
+		$this->interior_args['label'] = __( 'Interiors', 'wpfunnel' );
+
+		$this->interior_args['labels'] = array(
+			'name' => __( 'Interiors', 'wpfunnel' ),
+			'singular_name' => __( 'Interior', 'wpfunnel' )
+		);
+
+		$this->interior_args['hierarchical'] = is_admin();
+		$this->interior_args['show_in_nav_menus'] = true;
+		$this->interior_args['capability_type'] = 'post';
+		$this->interior_args['supports'][] = 'author';
 
 		add_filter( 'post_type_link', array( $this, 'funnel_interior_permalink' ), 10, 2 );
 		add_filter( 'quick_edit_dropdown_pages_args', array( $this, 'funnel_post_parent' ) );
@@ -101,6 +56,12 @@ class Legacy_Funnel_Type extends Funnel_Type
 	public function user_is_owner( $user )
 	{
 		return false;
+	}
+
+	// Legacy funnel type has no editors
+	public function assign_editor_to_owner( $caps, $cap, $user, $args )
+	{
+		return $caps;
 	}
 
 	// Legacy funnel type can't register roles because it borrows post capabilities
@@ -156,6 +117,11 @@ class Legacy_Funnel_Type extends Funnel_Type
 	}
 
 	public function update_post_author( $post_id, $post )
+	{
+		return;
+	}
+
+	public function update_theme()
 	{
 		return;
 	}

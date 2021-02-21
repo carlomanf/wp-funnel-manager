@@ -9,9 +9,11 @@ class Funnel_Type
 {
 	private $slug;
 	private $template;
-	private $editor_role;
-	private $author_role;
-	private $contributor_role;
+	protected $editor_role;
+	protected $author_role;
+	protected $contributor_role;
+	protected $interior_args;
+	protected $exterior_args;
 
 	public function __construct( $slug, $template )
 	{
@@ -61,18 +63,89 @@ class Funnel_Type
 
 	public function register()
 	{
+		$this->exterior_args = array(
+			'label' => $this->template->post_title,
+			'public' => true,
+			'hierarchical' => false,
+			'exclude_from_search' => false,
+			'publicly_queryable' => true,
+			'show_ui' => true,
+			'show_in_menu' => $GLOBALS['wpfunnel']->is_legacy() ? 'edit.php?post_type=funnel' : 'post-new.php?post_type=wp_template&wpfunnel=1',
+			'show_in_nav_menus' => true,
+			'show_in_admin_bar' => true,
+			'show_in_rest' => true,
+			'capability_type' => array( $this->slug, $this->slug . '_any' ),
+			'map_meta_cap' => true,
+			'supports' => array( 'title', 'editor', 'comments', 'revisions', 'author', 'excerpt', 'thumbnail', 'custom-fields' ),
+			'has_archive' => false,
+			'query_var' => true
+		);
+
+		$this->interior_args = array(
+			'label' => $this->template->post_title . ' ' . __( 'Interiors', 'wpfunnel' ),
+			'labels' => array(
+				'name' => $this->template->post_title . ' ' . __( 'Interiors', 'wpfunnel' ),
+				'singular_name' => $this->template->post_title . ' ' . __( 'Interior', 'wpfunnel' )
+			),
+			'public' => true,
+			'hierarchical' => false,
+			'exclude_from_search' => true,
+			'publicly_queryable' => true,
+			'show_ui' => true,
+			'show_in_menu' => false,
+			'show_in_nav_menus' => false,
+			'show_in_admin_bar' => false,
+			'show_in_rest' => true,
+			'capability_type' => array( $this->slug, $this->slug . '_any' ),
+			'map_meta_cap' => true,
+			'supports' => array( 'title', 'editor', 'comments', 'revisions', 'excerpt', 'page-attributes', 'thumbnail', 'custom-fields' ),
+			'has_archive' => false,
+			'query_var' => true
+		);
+
 		add_action( 'init', array( $this, 'register_taxonomies' ) );
-		add_filter( 'map_meta_cap', array( $this, 'assign_admin' ), 10, 4 );
+		add_filter( 'map_meta_cap', array( $this, 'assign_editor_to_owner' ), 10, 4 );
 		add_action( 'wp_roles_init', array( $this, 'add_role' ) );
 		add_filter( 'editable_roles', array( $this, 'make_role_editable' ) );
 		add_filter( 'post_row_actions', array( $this, 'funnel_interior_edit' ), 10, 2 );
 		add_action( 'init', array( __CLASS__, 'post_parent_query_var' ) );
-		add_action( 'admin_menu', array( $this, 'remove_interiors' ) );
 		add_filter( 'wp_insert_post_data', array( $this, 'setup_interior' ) );
+		add_filter( 'wp_insert_post_data', array( __CLASS__, 'validate_template_slug' ), 10, 2 );
 		add_action( 'save_post', array( $this, 'update_post_author' ), 10, 2 );
+		add_filter( 'save_post_wp_template', array( __CLASS__, 'declare_template' ) );
 		add_filter( 'admin_url', array( $this, 'new_interior' ), 10, 2 );
 		add_action( 'wp_trash_post', array( $this, 'trash_exterior_promote_interior' ) );
 		add_filter( 'single_template_hierarchy', array( $this, 'apply_template_to_interior' ) );
+		add_action( 'after_switch_theme', array( $this, 'update_theme' ) );
+	}
+
+	public static function declare_template( $post_id )
+	{
+		if ( isset( $_GET['wpfunnel'] ) )
+		{
+			update_post_meta( $post_id, 'wpfunnel', '1' );
+		}
+	}
+
+	public static function validate_template_slug( $data, $postarr )
+	{
+		if ( 'wp_template' === $data['post_type'] )
+		{
+			if ( isset( $_GET['wpfunnel'] ) || !empty( get_post_meta( $postarr['ID'], 'wpfunnel' ) ) )
+			{
+				if ( empty( $data['post_name'] ) )
+				{
+					$data['post_name'] = uniqid();
+				}
+
+				if ( strpos( $data['post_name'], 'single-' ) !== 0 )
+				{
+					$data['post_name'] = 'single-' . $data['post_name'];
+				}
+			}
+		}
+
+		return $data;
 	}
 
 	public function get_all_funnels()
@@ -98,60 +171,8 @@ class Funnel_Type
 
 	public function register_taxonomies()
 	{
-		$labels = array(
-			"name" => __( "Interiors", "wpfunnel" ),
-			"singular_name" => __( "Interior", "wpfunnel" ),
-		);
-
-		$args = array(
-			"label" => __( "Interiors", "wpfunnel" ),
-			"labels" => $labels,
-			"description" => "",
-			"public" => true,
-			"publicly_queryable" => true,
-			"show_ui" => true,
-			"show_in_rest" => true,
-			"rest_base" => "",
-			"has_archive" => false,
-			"show_in_menu" => true,
-			"show_in_nav_menus" => true,
-			"exclude_from_search" => false,
-			"capability_type" => array( $this->slug, $this->slug . '_any' ),
-			"map_meta_cap" => true,
-			"hierarchical" => false,
-			"rewrite" => array( "slug" => $this->slug . "_int", "with_front" => false ),
-			"query_var" => true,
-			"supports" => array( "title", "editor", "thumbnail", "comments", "revisions", "page-attributes", "custom-fields" ),
-		);
-
-		register_post_type( $this->slug . "_int", $args );
-
-		$args = array(
-			"label" => $this->slug,
-			"labels" => array(
-				"name" => $this->slug,
-				"singular_name" => $this->slug,
-			),
-			"description" => "",
-			"public" => true,
-			"publicly_queryable" => true,
-			"show_ui" => true,
-			"show_in_rest" => true,
-			"rest_base" => "",
-			"has_archive" => false,
-			"show_in_menu" => true,
-			"show_in_nav_menus" => true,
-			"exclude_from_search" => false,
-			"capability_type" => array( $this->slug, $this->slug . '_any' ),
-			"map_meta_cap" => true,
-			"hierarchical" => false,
-			"rewrite" => array( "slug" => $this->slug, "with_front" => false ),
-			"query_var" => true,
-			"supports" => array( "title", "editor", "thumbnail", "comments", "revisions", "author", "custom-fields" ),
-			"menu_icon" => "dashicons-filter"
-		);
-
-		register_post_type( $this->slug, $args );
+		register_post_type( $this->slug, $this->exterior_args );
+		register_post_type( $this->slug . '_int', $this->interior_args );
 	}
 
 	public function apply_template_to_interior( $templates )
@@ -160,6 +181,11 @@ class Funnel_Type
 		array_splice( $templates, -1, 0, 'single-' . $this->slug . '.php' );
 	
 		return $templates;
+	}
+
+	public function update_theme()
+	{
+		wp_set_post_terms( $this->template->ID, wp_get_theme()->get_stylesheet(), 'wp_theme', true );
 	}
 
 	/**
@@ -182,7 +208,7 @@ class Funnel_Type
 	 *
 	 * @since 1.2.0
 	 */
-	public function assign_admin( $caps, $cap, $user, $args )
+	public function assign_editor_to_owner( $caps, $cap, $user, $args )
 	{
 		foreach ( $caps as &$capability )
 		{
@@ -227,11 +253,6 @@ class Funnel_Type
 		}
 
 		return $roles;
-	}
-
-	public function remove_interiors()
-	{
-		remove_menu_page('edit.php?post_type=' . $this->slug . '_int');
 	}
 
 	/**
@@ -319,14 +340,20 @@ class Funnel_Type
 
 	public function update_post_author( $post_id, $post )
 	{
-		if ( $this->slug != $post->post_type )
-			return;
-
-		$interiors = get_posts( 'numberposts=-1&post_status=any,trash,auto-draft&post_type=' . $this->slug . '_int&post_parent=' . $post_id );
-		
-		foreach ( $interiors as $interior )
+		if ( $this->template->ID === $post_id )
 		{
-			wp_update_post( array( 'ID' => $interior->ID, 'post_author' => $post->post_author ) );
+			// In case theme was changed while plugin was inactive
+			$this->update_theme();
+		}
+	
+		if ( $this->slug === $post->post_type )
+		{
+			$interiors = get_posts( 'numberposts=-1&post_status=any,trash,auto-draft&post_type=' . $this->slug . '_int&post_parent=' . $post_id );
+		
+			foreach ( $interiors as $interior )
+			{
+				wp_update_post( array( 'ID' => $interior->ID, 'post_author' => $post->post_author ) );
+			}
 		}
 	}
 

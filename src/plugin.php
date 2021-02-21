@@ -16,6 +16,14 @@ class WP_Funnel_Manager
 	protected static $instance;
 
 	/**
+	 * Whether this plugin manages the legacy funnel type.
+	 *
+	 * @since 1.2.0
+	 * @var bool
+	 */
+	private $is_legacy;
+
+	/**
 	 * Funnel types managed by this plugin.
 	 *
 	 * @since 1.2.0
@@ -31,7 +39,24 @@ class WP_Funnel_Manager
 	 */
 	public function __construct()
 	{
-		if ( ( $legacy = $this->is_legacy() ) )
+		if ( get_option( 'wpfunnel_ignore_legacy' ) )
+		{
+			$this->is_legacy = false;
+		}
+		else
+		{
+			if ( empty( get_posts( 'numberposts=-1&post_type=funnel&post_status=any,trash' ) ) )
+			{
+				update_option( 'wpfunnel_ignore_legacy', '1' );
+				$this->is_legacy = false;
+			}
+			else
+			{
+				$this->is_legacy = true;
+			}
+		}
+
+		if ( $this->is_legacy )
 		{
 			$this->funnel_types[] = new Legacy_Funnel_Type();
 		}
@@ -40,18 +65,19 @@ class WP_Funnel_Manager
 		{
 			foreach ( get_posts( 'numberposts=-1&post_type=wp_template' ) as $post )
 			{
+				if ( empty( get_post_meta( $post->ID, 'wpfunnel' ) ) )
+				continue;
+
 				if ( $post->post_status !== 'publish' )
 				continue;
 
 				if ( strpos( $post->post_name, 'single-' ) !== 0 )
 				continue;
 
+				else
 				$slug = substr( $post->post_name, 7 );
-				
-				if ( strpos( $slug, '-' ) !== false )
-				continue;
 
-				if ( $legacy && $slug === 'funnel' )
+				if ( $this->is_legacy && $slug === 'funnel' )
 				continue;
 
 				if ( substr( $slug, -4 ) === '_int' )
@@ -64,18 +90,7 @@ class WP_Funnel_Manager
 
 	public function is_legacy()
 	{
-		if ( get_option( 'wpfunnel_ignore_legacy' ) )
-		return false;
-
-		if ( empty( get_posts( 'numberposts=-1&post_type=funnel&post_status=any,trash' ) ) )
-		{
-			update_option( 'wpfunnel_ignore_legacy', '1' );
-			return false;
-		}
-		else
-		{
-			return true;
-		}
+		return $this->is_legacy;
 	}
 
 	public function register_funnel_types()
@@ -86,6 +101,19 @@ class WP_Funnel_Manager
 		}
 	}
 
+	public function menu()
+	{
+		$new_type = 'post-new.php?post_type=wp_template&wpfunnel=1';
+		$parent = $this->is_legacy ? 'edit.php?post_type=funnel' : $new_type;
+
+		$wp_template = get_post_type_object( 'wp_template' );
+		$new_type_capability = $wp_template === null ? 'do_not_allow' : $wp_template->cap->create_posts;
+		$parent_capability = $this->is_legacy ? 'edit_posts' : $new_type_capability;
+
+		add_menu_page( 'Funnels', 'Funnels', $parent_capability, $parent, '', 'dashicons-filter', 25 );
+		add_submenu_page( $parent, 'Add New Type', 'Add New Type', $new_type_capability, $new_type, '', 20 );
+	}
+
 	/**
 	 * Launch the initialization process.
 	 *
@@ -93,6 +121,8 @@ class WP_Funnel_Manager
 	 */
 	public function run()
 	{
+		add_action( 'admin_menu', array( $this, 'menu' ), 9 );
+
 		if ( empty( $this->funnel_types ) )
 		{
 			add_action( 'admin_footer', array( $this, 'no_funnels_notice' ) );

@@ -61,30 +61,29 @@ class WP_Funnel_Manager
 			$this->funnel_types[] = new Legacy_Funnel_Type();
 		}
 
-		if ( function_exists( 'gutenberg_is_fse_theme' ) && gutenberg_is_fse_theme() )
+		add_theme_support( 'block-templates' );
+
+		foreach ( get_posts( 'numberposts=-1&post_type=wp_template' ) as $post )
 		{
-			foreach ( get_posts( 'numberposts=-1&post_type=wp_template' ) as $post )
-			{
-				if ( empty( get_post_meta( $post->ID, 'wpfunnel' ) ) )
-				continue;
+			if ( empty( get_post_meta( $post->ID, 'wpfunnel' ) ) )
+			continue;
 
-				if ( $post->post_status !== 'publish' )
-				continue;
+			if ( $post->post_status !== 'publish' )
+			continue;
 
-				if ( strpos( $post->post_name, 'single-' ) !== 0 )
-				continue;
+			if ( strpos( $post->post_name, 'single-' ) !== 0 )
+			continue;
 
-				else
-				$slug = substr( $post->post_name, 7 );
+			else
+			$slug = substr( $post->post_name, 7 );
 
-				if ( $this->is_legacy && $slug === 'funnel' )
-				continue;
+			if ( $this->is_legacy && $slug === 'funnel' )
+			continue;
 
-				if ( substr( $slug, -4 ) === '_int' )
-				continue;
+			if ( substr( $slug, -4 ) === '_int' )
+			continue;
 
-				$this->funnel_types[] = new Funnel_Type( $slug, $post );
-			}
+			$this->funnel_types[] = new Funnel_Type( $slug, $post );
 		}
 	}
 

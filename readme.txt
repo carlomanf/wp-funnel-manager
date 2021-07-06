@@ -1,9 +1,9 @@
 === WP Funnel Manager ===
 Contributors: manfcarlo
 Tags: funnel, funnels, marketing, sales
-Requires at least: 5.0
-Tested up to: 5.7
-Stable tag: 1.2.0
+Requires at least: 5.8
+Tested up to: 5.8
+Stable tag: 1.3.0
 Requires PHP: 5.6
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -47,6 +47,9 @@ Just go to the Funnels screen, find your funnel and click on Trash. This will de
 Through the WordPress support forum, or on the [GitHub page here.](https://github.com/carlomanf/wp-funnel-manager/issues)
 
 == Changelog ==
+
+= 1.3.0 =
+* Compatibility with core version 5.8 (#14)
 
 = 1.2.0 =
 * New funnel types for full site editing (#11)

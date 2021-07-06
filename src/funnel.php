@@ -116,7 +116,8 @@ class Funnel_Type
 		add_filter( 'admin_url', array( $this, 'new_interior' ), 10, 2 );
 		add_action( 'wp_trash_post', array( $this, 'trash_exterior_promote_interior' ) );
 		add_filter( 'single_template_hierarchy', array( $this, 'apply_template_to_interior' ) );
-		add_action( 'after_switch_theme', array( $this, 'update_theme' ) );
+		add_filter( 'pre_get_posts', array( __CLASS__, 'enable_universal_template' ) );
+		add_filter( 'get_the_terms', array( __CLASS__, 'localise_universal_template' ), 10, 3 );
 	}
 
 	public static function declare_template( $post_id )
@@ -181,11 +182,6 @@ class Funnel_Type
 		array_splice( $templates, -1, 0, 'single-' . $this->slug . '.php' );
 	
 		return $templates;
-	}
-
-	public function update_theme()
-	{
-		wp_set_post_terms( $this->template->ID, wp_get_theme()->get_stylesheet(), 'wp_theme', true );
 	}
 
 	/**
@@ -340,12 +336,6 @@ class Funnel_Type
 
 	public function update_post_author( $post_id, $post )
 	{
-		if ( $this->template->ID === $post_id )
-		{
-			// In case theme was changed while plugin was inactive
-			$this->update_theme();
-		}
-	
 		if ( $this->slug === $post->post_type )
 		{
 			$interiors = get_posts( 'numberposts=-1&post_status=any,trash,auto-draft&post_type=' . $this->slug . '_int&post_parent=' . $post_id );
@@ -355,6 +345,40 @@ class Funnel_Type
 				wp_update_post( array( 'ID' => $interior->ID, 'post_author' => $post->post_author ) );
 			}
 		}
+	}
+
+	public static function localise_universal_template( $terms, $id, $taxonomy )
+	{
+		if ( empty( $terms ) && 'wp_theme' == $taxonomy )
+		{
+			$term = new \stdClass();
+			$term->name = wp_get_theme()->get_stylesheet();
+			$term->slug = wp_get_theme()->get_stylesheet();
+			$term->taxonomy = 'wp_theme';
+			$terms[] = new \WP_Term( $term );
+		}
+
+		return $terms;
+	}
+
+	public static function enable_universal_template( $query )
+	{
+		if ( $query->get( 'post_type' ) === 'wp_template' )
+		{
+			$tax_query = $query->get( 'tax_query' );
+			if ( !empty( $tax_query ) && 'wp_theme' === $tax_query[0]['taxonomy'] )
+			{
+				$tax_query['relation'] = 'OR';
+				$tax_query[] = array(
+					'taxonomy' => 'wp_theme',
+					'operator' => 'NOT EXISTS'
+				);
+
+				$query->set( 'tax_query', $tax_query );
+			}
+		}
+
+		return $query;
 	}
 
 	/**

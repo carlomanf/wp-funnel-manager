@@ -151,15 +151,15 @@ class Funnel_Type
 
 	public function get_all_funnels()
 	{
-		$exteriors = get_posts( 'post_type=' . $this->slug );
+		$exteriors = new \WP_Query( 'post_type=' . $this->slug );
 		$funnels = array();
 
-		foreach ( $exteriors as $exterior )
+		foreach ( $exteriors->posts as $exterior )
 		{
 			$steps = array( $exterior );
-			$interiors = get_posts( 'post_type=' . $this->slug . '_int&post_parent=' . $exterior->ID );
+			$interiors = new \WP_Query( 'post_type=' . $this->slug . '_int&post_parent=' . $exterior->ID );
 
-			foreach ( $interiors as $interior )
+			foreach ( $interiors->posts as $interior )
 			{
 				$steps[] = $interior;
 			}
@@ -338,9 +338,9 @@ class Funnel_Type
 	{
 		if ( $this->slug === $post->post_type )
 		{
-			$interiors = get_posts( 'numberposts=-1&post_status=any,trash,auto-draft&post_type=' . $this->slug . '_int&post_parent=' . $post_id );
+			$interiors = new \WP_Query( 'posts_per_page=-1&post_status=any,trash,auto-draft&post_type=' . $this->slug . '_int&post_parent=' . $post_id );
 		
-			foreach ( $interiors as $interior )
+			foreach ( $interiors->posts as $interior )
 			{
 				wp_update_post( array( 'ID' => $interior->ID, 'post_author' => $post->post_author ) );
 			}
@@ -411,10 +411,10 @@ class Funnel_Type
 		if ( !( $exterior = get_post( $post_id ) ) || $this->slug != $exterior->post_type )
 			return;
 
-		$interiors = get_posts( 'numberposts=-1&orderby=menu_order&order=ASC&post_status=any,trash,auto-draft&post_type=' . $this->slug . '_int&post_parent=' . $post_id );
+		$interiors = new \WP_Query( 'posts_per_page=-1&orderby=menu_order&order=ASC&post_status=any,trash,auto-draft&post_type=' . $this->slug . '_int&post_parent=' . $post_id );
 		$promoted_id = 0;
 
-		foreach ( $interiors as $interior )
+		foreach ( $interiors->posts as $interior )
 		{
 			if ( $interior->post_status != 'trash' && $interior->post_status != 'auto-draft' )
 			{

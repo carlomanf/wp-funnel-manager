@@ -21,7 +21,7 @@ class WP_Funnel_Manager
 	 * @since 1.2.0
 	 * @var bool
 	 */
-	private $is_legacy;
+	private $is_legacy = false;
 
 	/**
 	 * Funnel types managed by this plugin.
@@ -39,16 +39,21 @@ class WP_Funnel_Manager
 	 */
 	public function __construct()
 	{
-		if ( get_option( 'wpfunnel_ignore_legacy' ) )
+		add_theme_support( 'block-templates' );
+	}
+
+	public function is_legacy()
+	{
+		return $this->is_legacy;
+	}
+
+	public function register_funnel_types()
+	{
+		if ( !get_option( 'wpfunnel_ignore_legacy' ) )
 		{
-			$this->is_legacy = false;
-		}
-		else
-		{
-			if ( empty( get_posts( 'numberposts=-1&post_type=funnel&post_status=any,trash' ) ) )
+			if ( empty( ( new \WP_Query( 'posts_per_page=-1&post_type=funnel&post_status=any,trash' ) )->posts ) )
 			{
 				update_option( 'wpfunnel_ignore_legacy', '1' );
-				$this->is_legacy = false;
 			}
 			else
 			{
@@ -61,9 +66,7 @@ class WP_Funnel_Manager
 			$this->funnel_types[] = new Legacy_Funnel_Type();
 		}
 
-		add_theme_support( 'block-templates' );
-
-		foreach ( get_posts( 'numberposts=-1&post_type=wp_template' ) as $post )
+		foreach ( ( new \WP_Query( 'posts_per_page=-1&post_type=wp_template' ) )->posts as $post )
 		{
 			if ( empty( get_post_meta( $post->ID, 'wpfunnel' ) ) )
 			continue;
@@ -85,15 +88,7 @@ class WP_Funnel_Manager
 
 			$this->funnel_types[] = new Funnel_Type( $slug, $post );
 		}
-	}
 
-	public function is_legacy()
-	{
-		return $this->is_legacy;
-	}
-
-	public function register_funnel_types()
-	{
 		foreach ( $this->funnel_types as $type )
 		{
 			$type->register();
@@ -121,20 +116,16 @@ class WP_Funnel_Manager
 	public function run()
 	{
 		add_action( 'admin_menu', array( $this, 'menu' ), 9 );
-
-		if ( empty( $this->funnel_types ) )
-		{
-			add_action( 'admin_footer', array( $this, 'no_funnels_notice' ) );
-		}
-		else
-		{
-			$this->register_funnel_types();
-		}
+		add_action( 'plugins_loaded', array( $this, 'register_funnel_types' ) );
+		add_action( 'admin_footer', array( $this, 'no_funnels_notice' ) );
 	}
 
 	public function no_funnels_notice()
 	{
-		echo '<div class="notice notice-warning"><p>Thank you for activating WP Funnel Manager! To start building funnels, ensure your active theme supports Full Site Editing.</p></div>';
+		if ( empty( $this->funnel_types ) )
+		{
+			echo '<div class="notice notice-warning"><p>Thank you for activating WP Funnel Manager! To start building funnels, just click on Funnels in the admin menu.</p></div>';
+		}
 	}
 
 	/**

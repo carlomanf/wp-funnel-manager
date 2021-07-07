@@ -97,7 +97,7 @@ class WP_Funnel_Manager
 
 	public function menu()
 	{
-		$new_type = 'post-new.php?post_type=wp_template&wpfunnel=1';
+		$new_type = 'wpfunnel';
 		$parent = $this->is_legacy ? 'edit.php?post_type=funnel' : $new_type;
 
 		$wp_template = get_post_type_object( 'wp_template' );
@@ -105,7 +105,53 @@ class WP_Funnel_Manager
 		$parent_capability = $this->is_legacy ? 'edit_posts' : $new_type_capability;
 
 		add_menu_page( 'Funnels', 'Funnels', $parent_capability, $parent, '', 'dashicons-filter', 25 );
-		add_submenu_page( $parent, 'Add New Type', 'Add New Type', $new_type_capability, $new_type, '', 20 );
+		$hook_suffix = add_submenu_page( $parent, 'New Funnel Type', 'New Funnel Type', $new_type_capability, $new_type, array( $this, 'new_funnel_type' ), 20 );
+
+		add_action( 'load-' . $hook_suffix, array( $this, 'new_funnel_type' ) );
+	}
+
+	public function new_funnel_type()
+	{
+		$num = 0;
+		$args = array(
+			'post_type' => 'wp_template',
+			'post_status' => 'publish',
+			'meta_input' => array(
+				'wpfunnel' => '1'
+			)
+		);
+
+		do {
+			$num++;
+			$args = array_replace(
+				$args,
+				array(
+					'title' => 'New Funnel Type ' . $num
+				)
+			);
+		}
+		while ( ( new \WP_Query( $args ) )->have_posts() );
+
+		$type = uniqid();
+
+		wp_insert_post(
+			array_diff_assoc(
+				array_replace(
+					$args,
+					array(
+						'post_name' => 'single-' . $type,
+						'post_content' => '<!-- wp:post-content /-->',
+						'post_title' => $args['title']
+					)
+				),
+				array(
+					'title' => $args['title']
+				)
+			)
+		);
+
+		wp_redirect( admin_url( 'post-new.php?post_type=' . $type ) );
+		exit;
 	}
 
 	/**

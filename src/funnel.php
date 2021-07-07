@@ -70,7 +70,7 @@ class Funnel_Type
 			'exclude_from_search' => false,
 			'publicly_queryable' => true,
 			'show_ui' => true,
-			'show_in_menu' => $GLOBALS['wpfunnel']->is_legacy() ? 'edit.php?post_type=funnel' : 'post-new.php?post_type=wp_template&wpfunnel=1',
+			'show_in_menu' => $GLOBALS['wpfunnel']->is_legacy() ? 'edit.php?post_type=funnel' : 'wpfunnel',
 			'show_in_nav_menus' => true,
 			'show_in_admin_bar' => true,
 			'show_in_rest' => true,
@@ -110,43 +110,12 @@ class Funnel_Type
 		add_filter( 'post_row_actions', array( $this, 'funnel_interior_edit' ), 10, 2 );
 		add_action( 'init', array( __CLASS__, 'post_parent_query_var' ) );
 		add_filter( 'wp_insert_post_data', array( $this, 'setup_interior' ) );
-		add_filter( 'wp_insert_post_data', array( __CLASS__, 'validate_template_slug' ), 10, 2 );
 		add_action( 'save_post', array( $this, 'update_post_author' ), 10, 2 );
-		add_filter( 'save_post_wp_template', array( __CLASS__, 'declare_template' ) );
 		add_filter( 'admin_url', array( $this, 'new_interior' ), 10, 2 );
 		add_action( 'wp_trash_post', array( $this, 'trash_exterior_promote_interior' ) );
 		add_filter( 'single_template_hierarchy', array( $this, 'apply_template_to_interior' ) );
 		add_filter( 'pre_get_posts', array( __CLASS__, 'enable_universal_template' ) );
 		add_filter( 'get_the_terms', array( __CLASS__, 'localise_universal_template' ), 10, 3 );
-	}
-
-	public static function declare_template( $post_id )
-	{
-		if ( isset( $_GET['wpfunnel'] ) )
-		{
-			update_post_meta( $post_id, 'wpfunnel', '1' );
-		}
-	}
-
-	public static function validate_template_slug( $data, $postarr )
-	{
-		if ( 'wp_template' === $data['post_type'] )
-		{
-			if ( isset( $_GET['wpfunnel'] ) || !empty( get_post_meta( $postarr['ID'], 'wpfunnel' ) ) )
-			{
-				if ( empty( $data['post_name'] ) )
-				{
-					$data['post_name'] = uniqid();
-				}
-
-				if ( strpos( $data['post_name'], 'single-' ) !== 0 )
-				{
-					$data['post_name'] = 'single-' . $data['post_name'];
-				}
-			}
-		}
-
-		return $data;
 	}
 
 	public function get_all_funnels()

@@ -5,20 +5,40 @@
  */
 namespace WP_Funnel_Manager;
 
-class Funnel_Type
+class Funnel_Type extends Legacy_Funnel_Type
 {
-	private $slug;
 	private $template;
-	protected $editor_role;
-	protected $author_role;
-	protected $contributor_role;
-	protected $interior_args;
-	protected $exterior_args;
+	private $editor_role;
+	private $author_role;
+	private $contributor_role;
 
 	public function __construct( $slug, $template )
 	{
+		parent::__construct();
+
 		$this->slug = $slug;
 		$this->template = $template;
+
+		$this->exterior_args['label'] = $this->template->post_title;
+
+		unset( $this->exterior_args['labels'] );
+
+		$this->exterior_args['hierarchical'] = false;
+		$this->exterior_args['show_in_menu'] = $GLOBALS['wpfunnel']->is_legacy() ? 'edit.php?post_type=funnel' : 'wpfunnel';
+		$this->exterior_args['capability_type'] = array( $this->slug, $this->slug . '_any' );
+		$this->exterior_args['supports'] = array_diff( $this->exterior_args['supports'], array( 'page-attributes' ) );
+
+		$this->interior_args['label'] = $this->template->post_title . ' ' . __( 'Interiors', 'wpfunnel' );
+
+		$this->interior_args['labels'] = array(
+			'name' => $this->template->post_title . ' ' . __( 'Interiors', 'wpfunnel' ),
+			'singular_name' => $this->template->post_title . ' ' . __( 'Interior', 'wpfunnel' )
+		);
+
+		$this->interior_args['hierarchical'] = false;
+		$this->interior_args['show_in_nav_menus'] = false;
+		$this->interior_args['capability_type'] = array( $this->slug, $this->slug . '_any' );
+		$this->interior_args['supports'] = array_diff( $this->interior_args['supports'], array( 'author' ) );
 
 		$this->editor_role = array(
 			'name' => 'Editor for ' . $this->slug,
@@ -63,59 +83,42 @@ class Funnel_Type
 
 	public function register()
 	{
-		$this->exterior_args = array(
-			'label' => $this->template->post_title,
-			'public' => true,
-			'hierarchical' => false,
-			'exclude_from_search' => false,
-			'publicly_queryable' => true,
-			'show_ui' => true,
-			'show_in_menu' => $GLOBALS['wpfunnel']->is_legacy() ? 'edit.php?post_type=funnel' : 'wpfunnel',
-			'show_in_nav_menus' => true,
-			'show_in_admin_bar' => true,
-			'show_in_rest' => true,
-			'capability_type' => array( $this->slug, $this->slug . '_any' ),
-			'map_meta_cap' => true,
-			'supports' => array( 'title', 'editor', 'comments', 'revisions', 'author', 'excerpt', 'thumbnail', 'custom-fields' ),
-			'has_archive' => false,
-			'query_var' => true
-		);
+		parent::register();
 
-		$this->interior_args = array(
-			'label' => $this->template->post_title . ' ' . __( 'Interiors', 'wpfunnel' ),
-			'labels' => array(
-				'name' => $this->template->post_title . ' ' . __( 'Interiors', 'wpfunnel' ),
-				'singular_name' => $this->template->post_title . ' ' . __( 'Interior', 'wpfunnel' )
-			),
-			'public' => true,
-			'hierarchical' => false,
-			'exclude_from_search' => true,
-			'publicly_queryable' => true,
-			'show_ui' => true,
-			'show_in_menu' => false,
-			'show_in_nav_menus' => false,
-			'show_in_admin_bar' => false,
-			'show_in_rest' => true,
-			'capability_type' => array( $this->slug, $this->slug . '_any' ),
-			'map_meta_cap' => true,
-			'supports' => array( 'title', 'editor', 'comments', 'revisions', 'excerpt', 'page-attributes', 'thumbnail', 'custom-fields' ),
-			'has_archive' => false,
-			'query_var' => true
-		);
-
-		add_action( 'init', array( $this, 'register_taxonomies' ) );
-		add_filter( 'map_meta_cap', array( $this, 'assign_editor_to_owner' ), 10, 4 );
-		add_action( 'wp_roles_init', array( $this, 'add_role' ) );
 		add_filter( 'editable_roles', array( $this, 'make_role_editable' ) );
-		add_filter( 'post_row_actions', array( $this, 'funnel_interior_edit' ), 10, 2 );
-		add_action( 'init', array( __CLASS__, 'post_parent_query_var' ) );
-		add_filter( 'wp_insert_post_data', array( $this, 'setup_interior' ) );
-		add_action( 'save_post', array( $this, 'update_post_author' ), 10, 2 );
-		add_filter( 'admin_url', array( $this, 'new_interior' ), 10, 2 );
-		add_action( 'wp_trash_post', array( $this, 'trash_exterior_promote_interior' ) );
-		add_filter( 'single_template_hierarchy', array( $this, 'apply_template_to_interior' ) );
-		add_filter( 'pre_get_posts', array( __CLASS__, 'enable_universal_template' ) );
 		add_filter( 'get_the_terms', array( __CLASS__, 'localise_universal_template' ), 10, 3 );
+		add_filter( 'map_meta_cap', array( $this, 'assign_editor_to_owner' ), 10, 4 );
+		add_filter( 'pre_get_posts', array( __CLASS__, 'enable_universal_template' ) );
+		add_action( 'save_post', array( $this, 'update_post_author' ), 10, 2 );
+		add_filter( 'single_template_hierarchy', array( $this, 'apply_template_to_interior' ) );
+		add_action( 'wp_roles_init', array( $this, 'add_role' ) );
+
+		remove_filter( 'page_row_actions', array( $this, 'funnel_interior_edit' ), 10, 2 );
+		add_filter( 'post_row_actions', array( $this, 'funnel_interior_edit' ), 10, 2 );
+	}
+
+	public function funnel_interior_permalink( $permalink, $post )
+	{
+		return $permalink;
+	}
+	
+	public function funnel_post_parent( $args )
+	{
+		return $args;
+	}
+
+	/**
+	 * Prevent interiors being saved without a valid exterior
+	 * and align the post author with the exterior
+	 * Hooked to wp_insert_post_data filter
+	 *
+	 * @since 1.2.0
+	 */
+	protected function child_setup_interior( $data, $exterior )
+	{
+		$data['post_author'] = $exterior->post_author;
+		
+		return $data;
 	}
 
 	public function get_all_funnels()
@@ -139,20 +142,6 @@ class Funnel_Type
 		return $funnels;
 	}
 
-	public function register_taxonomies()
-	{
-		register_post_type( $this->slug, $this->exterior_args );
-		register_post_type( $this->slug . '_int', $this->interior_args );
-	}
-
-	public function apply_template_to_interior( $templates )
-	{
-		if ( in_array( 'single-' . $this->slug . '_int.php', $templates ) )
-		array_splice( $templates, -1, 0, 'single-' . $this->slug . '.php' );
-	
-		return $templates;
-	}
-
 	/**
 	 * Determine whether a user is the owner of this funnel type
 	 * They are an owner if they can edit the original template
@@ -167,47 +156,6 @@ class Funnel_Type
 		return user_can( $user, 'edit_post', $this->template );
 	}
 
-	/**
-	 * Automatically assign the editor role to the owner(s) of the funnel type
-	 * Hooked to map_meta_cap filter
-	 *
-	 * @since 1.2.0
-	 */
-	public function assign_editor_to_owner( $caps, $cap, $user, $args )
-	{
-		foreach ( $caps as &$capability )
-		{
-			if ( !in_array( $capability, array_keys( $this->editor_role['capabilities'] ) ) )
-			continue;
-
-			if ( !$this->user_is_owner( $user ) )
-			continue;
-
-			$capability = 'exist';
-		}
-
-		return $caps;
-	}
-
-	// Register a role for this funnel type
-	public function add_role( $roles )
-	{
-		$slug = $this->slug . '_editor';
-
-		$roles->role_objects[ $slug ] = new \WP_Role( $slug, $this->editor_role['capabilities'] );
-		$roles->role_names[ $slug ] = $this->editor_role['name'];
-
-		$slug = $this->slug . '_author';
-
-		$roles->role_objects[ $slug ] = new \WP_Role( $slug, $this->author_role['capabilities'] );
-		$roles->role_names[ $slug ] = $this->author_role['name'];
-
-		$slug = $this->slug . '_contributor';
-
-		$roles->role_objects[ $slug ] = new \WP_Role( $slug, $this->contributor_role['capabilities'] );
-		$roles->role_names[ $slug ] = $this->contributor_role['name'];
-	}
-
 	public function make_role_editable( $roles )
 	{
 		if ( $this->user_is_owner( wp_get_current_user() ) )
@@ -218,102 +166,6 @@ class Funnel_Type
 		}
 
 		return $roles;
-	}
-
-	/**
-	 * Add a link to view and edit funnel interiors
-	 *
-	 * @since 1.0.3
-	 */
-	public function funnel_interior_edit( $actions, $post ) {
-		if ( $this->slug != $post->post_type )
-			return $actions;
-
-		$url = admin_url( 'edit.php?post_type=' . $this->slug . '_int&post_parent=' . $post->ID );
-		$actions['edit_interiors'] = '<a href="' . esc_url( $url ) . '">' . __( 'Edit Steps', 'wpfunnel' ) . '</a>';
-
-		return $actions;
-	}
-
-	/**
-	 * Allow post parent as query var
-	 * This is needed to view funnel interiors
-	 *
-	 * @since 1.0.3
-	 */
-	public static function post_parent_query_var()
-	{
-		if ( !is_admin() )
-			return;
-
-		$GLOBALS['wp']->add_query_var( 'post_parent' );
-	}
-	
-	/**
-	 * Validates whether the supplied post ID is a valid exterior
-	 * for this funnel type, that the current user can edit.
-	 * 
-	 * Returns the post if valid, or false if no valid post.
-	 *
-	 * @since 1.2.0
-	 */
-	private function validate_post_parent( $post_parent_id )
-	{	
-		if ( !( $post = get_post( $post_parent_id ) ) )
-			return false;
-
-		if ( $post->post_type != $this->slug )
-			return false;
-
-		if ( $post->post_status == 'trash' || $post->post_status == 'auto-draft' )
-			return false;
-
-		if ( !current_user_can( 'edit_post', $post ) )
-			return false;
-
-		return $post;
-	}
-
-	/**
-	 * Prevent interiors being saved without a valid exterior
-	 * and align the post author with the exterior
-	 * Hooked to wp_insert_post_data filter
-	 *
-	 * @since 1.2.0
-	 */
-	public function setup_interior( $data )
-	{
-		if ( $data['post_type'] != $this->slug . '_int' )
-		{
-			return $data;
-		}
-
-		if ( empty( $data['post_parent'] ) && !empty( $_GET['post_parent'] ) )
-		{
-			$data['post_parent'] = intval( $_GET['post_parent'] );
-		}
-
-		if ( !( $exterior = $this->validate_post_parent( $data['post_parent'] ) ) )
-		{
-			wp_die( 'Funnel Interiors must be assigned to a Funnel. Please try again.' );
-		}
-
-		$data['post_author'] = $exterior->post_author;
-		
-		return $data;
-	}
-
-	public function update_post_author( $post_id, $post )
-	{
-		if ( $this->slug === $post->post_type )
-		{
-			$interiors = new \WP_Query( 'posts_per_page=-1&post_status=any,trash,auto-draft&post_type=' . $this->slug . '_int&post_parent=' . $post_id );
-		
-			foreach ( $interiors->posts as $interior )
-			{
-				wp_update_post( array( 'ID' => $interior->ID, 'post_author' => $post->post_author ) );
-			}
-		}
 	}
 
 	public static function localise_universal_template( $terms, $id, $taxonomy )
@@ -351,70 +203,64 @@ class Funnel_Type
 	}
 
 	/**
-	 * Pass the post parent GET variable from edit.php to post-new.php
-	 * Hooked to admin_url filter
+	 * Automatically assign the editor role to the owner(s) of the funnel type
+	 * Hooked to map_meta_cap filter
 	 *
-	 * @since 1.1.0
+	 * @since 1.2.0
 	 */
-	public function new_interior( $url, $path )
+	public function assign_editor_to_owner( $caps, $cap, $user, $args )
 	{
-		// Validate path
-		if ( strpos( $path, 'post-new.php?post_type=' . $this->slug . '_int' ) !== 0 )
-			return $url;
+		foreach ( $caps as &$capability )
+		{
+			if ( !in_array( $capability, array_keys( $this->editor_role['capabilities'] ) ) )
+			continue;
 
-		// Validate post type
-		if ( $this->slug . '_int' != get_query_var( 'post_type' ) )
-			return $url;
+			if ( !$this->user_is_owner( $user ) )
+			continue;
 
-		$post_parent = get_query_var( 'post_parent' );
+			$capability = 'exist';
+		}
 
-		// Validate post parent
-		if ( !$this->validate_post_parent( $post_parent ) )
-			return $url;
-
-		return esc_url( $url . '&post_parent=' . $post_parent );
+		return $caps;
 	}
 
-	public function trash_exterior_promote_interior( $post_id )
+	public function update_post_author( $post_id, $post )
 	{
-		if ( !( $exterior = get_post( $post_id ) ) || $this->slug != $exterior->post_type )
-			return;
-
-		$interiors = new \WP_Query( 'posts_per_page=-1&orderby=menu_order&order=ASC&post_status=any,trash,auto-draft&post_type=' . $this->slug . '_int&post_parent=' . $post_id );
-		$promoted_id = 0;
-
-		foreach ( $interiors->posts as $interior )
+		if ( $this->slug === $post->post_type )
 		{
-			if ( $interior->post_status != 'trash' && $interior->post_status != 'auto-draft' )
+			$interiors = new \WP_Query( 'posts_per_page=-1&post_status=any,trash,auto-draft&post_type=' . $this->slug . '_int&post_parent=' . $post_id );
+		
+			foreach ( $interiors->posts as $interior )
 			{
-				wp_update_post( array( 'ID' => $interior->ID, 'post_type' => $this->slug ) );
-				wp_update_post( array( 'ID' => $interior->ID, 'menu_order' => 0 ) );
-				wp_update_post( array( 'ID' => $interior->ID, 'post_parent' => 0 ) );
-
-				$promoted_id = $interior->ID;
-				break;
+				wp_update_post( array( 'ID' => $interior->ID, 'post_author' => $post->post_author ) );
 			}
 		}
+	}
 
-		// If nothing promoted, promote everything
-		if ( empty( $promoted_id ) )
-		{
-			foreach ( $interiors as $interior )
-			{
-				wp_update_post( array( 'ID' => $interior->ID, 'post_type' => $this->slug ) );
-				wp_update_post( array( 'ID' => $interior->ID, 'menu_order' => 0 ) );
-				wp_update_post( array( 'ID' => $interior->ID, 'post_parent' => 0 ) );
-			}
-		}
-		else
-		{
-			foreach ( $interiors as $interior )
-			{
-				if ( $interior->ID === $promoted_id )
-					continue;
+	public function apply_template_to_interior( $templates )
+	{
+		if ( in_array( 'single-' . $this->slug . '_int.php', $templates ) )
+		array_splice( $templates, -1, 0, 'single-' . $this->slug . '.php' );
+	
+		return $templates;
+	}
 
-				wp_update_post( array( 'ID' => $interior->ID, 'post_parent' => $promoted_id ) );
-			}
-		}
+	// Register a role for this funnel type
+	public function add_role( $roles )
+	{
+		$slug = $this->slug . '_editor';
+
+		$roles->role_objects[ $slug ] = new \WP_Role( $slug, $this->editor_role['capabilities'] );
+		$roles->role_names[ $slug ] = $this->editor_role['name'];
+
+		$slug = $this->slug . '_author';
+
+		$roles->role_objects[ $slug ] = new \WP_Role( $slug, $this->author_role['capabilities'] );
+		$roles->role_names[ $slug ] = $this->author_role['name'];
+
+		$slug = $this->slug . '_contributor';
+
+		$roles->role_objects[ $slug ] = new \WP_Role( $slug, $this->contributor_role['capabilities'] );
+		$roles->role_names[ $slug ] = $this->contributor_role['name'];
 	}
 }

@@ -161,9 +161,39 @@ class WP_Funnel_Manager
 	 */
 	public function run()
 	{
-		add_action( 'admin_menu', array( $this, 'menu' ), 9 );
-		add_action( 'plugins_loaded', array( $this, 'register_funnel_types' ) );
 		add_action( 'admin_footer', array( $this, 'no_funnels_notice' ) );
+		add_action( 'admin_menu', array( $this, 'menu' ), 9 );
+		add_action( 'init', array( $this, 'database_upgrade_130' ), 20 );
+		add_action( 'plugins_loaded', array( $this, 'register_funnel_types' ) );
+	}
+
+	public function get_db_version()
+	{
+		return (int) get_option( 'wpfunnel_db_version', 0 );
+	}
+
+	public function database_upgrade_130()
+	{
+		if ( $this->get_db_version() >= 130 )
+		return;
+
+		$funnel_types = new \WP_Query(
+			array(
+				'post_type' => 'wp_template',
+				'post_status' => array( 'any', 'trash', 'auto-draft' ),
+				'meta_input' => array(
+					'wpfunnel' => '1'
+				),
+				'posts_per_page' => -1
+			)
+		);
+
+		foreach ( $funnel_types->posts as $post )
+		{
+			wp_set_post_terms( $post->ID, array(), 'wp_theme' );
+		}
+
+		update_option( 'wpfunnel_db_version', '130' );
 	}
 
 	public function no_funnels_notice()

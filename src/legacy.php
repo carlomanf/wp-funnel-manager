@@ -66,7 +66,7 @@ class Legacy_Funnel_Type
 		add_action( 'init', array( __CLASS__, 'post_parent_query_var' ) );
 		add_action( 'init', array( $this, 'register_taxonomies' ) );
 		add_filter( 'page_attributes_dropdown_pages_args', array( $this, 'funnel_post_parent' ) );
-		add_filter( 'post_row_actions', array( $this, 'funnel_interior_edit' ), 10, 2 );
+		add_filter( 'page_row_actions', array( $this, 'funnel_interior_edit' ), 10, 2 );
 		add_filter( 'post_type_link', array( $this, 'funnel_interior_permalink' ), 10, 2 );
 		add_filter( 'quick_edit_dropdown_pages_args', array( $this, 'funnel_post_parent' ) );
 		add_filter( 'wp_insert_post_data', array( $this, 'setup_interior' ) );

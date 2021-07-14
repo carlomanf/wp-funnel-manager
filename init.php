@@ -20,9 +20,11 @@ if ( ! defined( 'WP_FUNNEL_URL' ) )
 	define( 'WP_FUNNEL_URL', plugin_dir_url( __FILE__ ) );
 }
 
-// Load classes.
-require WP_FUNNEL_DIR . 'src/funnel.php';
+// Load funnel type classes.
 require WP_FUNNEL_DIR . 'src/legacy.php';
+require WP_FUNNEL_DIR . 'src/funnel.php';
+
+// Load other classes.
 require WP_FUNNEL_DIR . 'src/plugin.php';
 
 // Initialize the plugin.

@@ -245,7 +245,7 @@ class Legacy_Funnel_Type
 		// If nothing promoted, promote everything
 		if ( empty( $promoted_id ) )
 		{
-			foreach ( $interiors as $interior )
+			foreach ( $interiors->posts as $interior )
 			{
 				wp_update_post( array( 'ID' => $interior->ID, 'post_type' => $this->slug ) );
 				wp_update_post( array( 'ID' => $interior->ID, 'menu_order' => 0 ) );
@@ -254,7 +254,7 @@ class Legacy_Funnel_Type
 		}
 		else
 		{
-			foreach ( $interiors as $interior )
+			foreach ( $interiors->posts as $interior )
 			{
 				if ( $interior->ID === $promoted_id )
 					continue;

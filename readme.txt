@@ -26,17 +26,23 @@ This section describes how to install the plugin and get it working.
 
 == How to Use This Plugin ==
 
-After installation, you will find a Funnels screen in WordPress. Click on Add New to start your first funnel. You will find the familiar editing screen to create the first step of your funnel.
+First, ensure you are running at least version 5.8 of WordPress.
 
-To add more steps to your funnel, visit the funnel in the Funnels screen and click on Edit Steps. Then, click on Add New to add a new step to this funnel. Again, use the familiar editing screen to add content to this step.
+After installation, you will find a Funnels screen in the WordPress admin menu. You will find the familiar editing screen to create your first funnel.
+
+Funnels are fully integrated with the new block templates feature of WordPress 5.8. This means you can edit the block template of your funnel by clicking on Template within the block editor. You can also add multiple funnels that share the same block template, or create new funnel types with their own block templates.
+
+To add more steps to a funnel, find the funnel within its funnel type listing and click on Edit Steps. Then, click on Add New to add a new step to this funnel. Again, use the familiar editing screen to add content to this step. All steps of the funnel share the same block template.
 
 Repeat this process for each step of the funnel. Make sure you use the WordPress menu order feature to arrange the steps of your funnel in the correct order.
 
 == Frequently Asked Questions ==
 
-= Why don't I see anything in the admin menu? =
+= How do I change "New Funnel Type 1" to something more meaningful? =
 
-You must activate a theme that supports full site editing, and then you will see Funnels in the admin menu. [Click here for more information.](https://make.wordpress.org/design/handbook/focuses/full-site-editing/)
+1. Edit any funnel that belongs to the funnel type "New Funnel Type 1"
+1. Click on "Template" in the sidebar of the block editor to edit the block template
+1. At the top of the block editor, you can change the name of the block template
 
 = How do I delete the first step of my funnel without deleting the whole funnel? =
 
@@ -50,6 +56,8 @@ Through the WordPress support forum, or on the [GitHub page here.](https://githu
 
 = 1.3.0 =
 * Compatibility with core version 5.8 (#14)
+* Upgrade software architecture in preparation for later new features (#15)
+* Replaced get_posts with WP_Query
 
 = 1.2.0 =
 * New funnel types for full site editing (#11)

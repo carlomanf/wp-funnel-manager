@@ -4,6 +4,7 @@
  * Plugin URI:
  * Description: Organises content into multi-step funnels.
  * Version: 1.3.0
+ * Requires at least: 5.8
  * Author: Ask Carlo
  * Author URI: https://askcarlo.com
  * Text Domain: wpfunnel

@@ -181,6 +181,7 @@ class WP_Funnel_Manager
 		add_action( 'admin_footer', array( $this, 'no_funnels_notice' ) );
 		add_action( 'admin_menu', array( $this, 'menu' ), 9 );
 		add_action( 'init', array( $this, 'database_upgrade_130' ), 20 );
+		add_action( 'init', array( $this, 'database_upgrade_131' ), 20 );
 		add_action( 'after_setup_theme', array( $this, 'register_funnel_types' ) );
 	}
 
@@ -198,9 +199,8 @@ class WP_Funnel_Manager
 			array(
 				'post_type' => 'wp_template',
 				'post_status' => array( 'any', 'trash', 'auto-draft' ),
-				'meta_input' => array(
-					'wpfunnel' => '1'
-				),
+				'meta_key' => 'wpfunnel',
+				'meta_value' => '1',
 				'posts_per_page' => -1
 			)
 		);
@@ -210,7 +210,52 @@ class WP_Funnel_Manager
 			wp_set_post_terms( $post->ID, array(), 'wp_theme' );
 		}
 
-		update_option( 'wpfunnel_db_version', '130' );
+		// If upgrading to 130 on version 1.3.1, skip the upgrade to 131
+		update_option( 'wpfunnel_db_version', '131' );
+	}
+
+	/**
+	 * Fixes a now-removed error with the 130 upgrade routine.
+	 *
+	 * @since 1.3.1
+	 */
+	public function database_upgrade_131()
+	{
+		if ( $this->get_db_version() >= 131 || !current_theme_supports( 'block-templates' ) )
+		return;
+
+		$not_funnel_types = new \WP_Query(
+			array(
+				'post_type' => 'wp_template',
+				'post_status' => array( 'any', 'trash', 'auto-draft' ),
+				'meta_query' => array(
+					'relation' => 'OR',
+					array(
+						'key' => 'wpfunnel',
+						'compare' => 'NOT EXISTS'
+					),
+					array(
+						'key' => 'wpfunnel',
+						'value' => '1',
+						'compare' => '!='
+					)
+				),
+				'tax_query' => array(
+					array(
+						'taxonomy' => 'wp_theme',
+						'operator' => 'NOT EXISTS'
+					)
+				),
+				'posts_per_page' => -1
+			)
+		);
+
+		foreach ( $not_funnel_types->posts as $post )
+		{
+			wp_set_post_terms( $post->ID, wp_get_theme()->get_stylesheet(), 'wp_theme', true );
+		}
+
+		update_option( 'wpfunnel_db_version', '131' );
 	}
 
 	public function no_funnels_notice()

@@ -1,10 +1,8 @@
 === WP Funnel Manager ===
 Contributors: manfcarlo
-Tags: funnel, funnels, marketing, sales
-Requires at least: 5.8
+Tags: funnel builder, page builder, sales funnels, landing page, marketing, sales, block, blocks, block editor, gutenberg, template, templates
 Tested up to: 5.8
 Stable tag: 1.3.0
-Requires PHP: 5.6
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -48,11 +46,26 @@ Repeat this process for each step of the funnel. Make sure you use the WordPress
 
 Just go to the Funnels screen, find your funnel and click on Trash. This will delete the first step of the funnel only, and the second step of the funnel will take its place.
 
+= Why did my funnels disappear after switching theme? =
+
+WP Funnel Manager requires the template editor, which is a new feature that some themes still don't support. Suggested actions are:
+
+* Switch back to your previous theme that supports the template editor
+* Contact your theme author and request the theme to [support the template editor](https://make.wordpress.org/core/2021/06/16/introducing-the-template-editor-in-wordpress-5-8/)
+* You can also [activate this plugin](https://wordpress.org/plugins/template-editor/), which forces your theme to support the template editor
+
+Once your active theme supports the template editor, all your funnels will be automatically restored.
+
 = How do I suggest a new feature or submit a bug report? =
 
 Through the WordPress support forum, or on the [GitHub page here.](https://github.com/carlomanf/wp-funnel-manager/issues)
 
 == Changelog ==
+
+= 1.3.1 =
+* Turned off templated funnels for themes that don't support templates
+* Fixed error with 1.3.0 that modified data unrelated to the plugin
+* Added more tags for plugin directory
 
 = 1.3.0 =
 * Compatibility with core version 5.8 (#14)

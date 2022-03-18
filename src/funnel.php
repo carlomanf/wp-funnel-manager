@@ -92,9 +92,16 @@ class Funnel_Type extends Legacy_Funnel_Type
 		add_action( 'save_post', array( $this, 'update_post_author' ), 10, 2 );
 		add_filter( 'single_template_hierarchy', array( $this, 'apply_template_to_interior' ) );
 		add_action( 'wp_roles_init', array( $this, 'add_role' ) );
+		add_filter( 'after_setup_theme', array( __CLASS__, 'regenerate_roles' ), 11 );
 
 		remove_filter( 'page_row_actions', array( $this, 'funnel_interior_edit' ), 10, 2 );
 		add_filter( 'post_row_actions', array( $this, 'funnel_interior_edit' ), 10, 2 );
+	}
+
+	public static function regenerate_roles()
+	{
+		$roles = wp_roles();
+		$roles->for_site( $roles->get_site_id() );
 	}
 
 	public function funnel_interior_permalink( $permalink, $post )

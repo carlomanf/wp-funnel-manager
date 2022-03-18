@@ -17,7 +17,7 @@ if ( ! defined( 'WPINC' ) )
     die;
 }
 
-if ( false )
+if ( function_exists( 'wp_get_current_user' ) )
 {
     add_action( 'plugins_loaded', 'wpfunnel_init_deactivation' );
 
@@ -46,12 +46,7 @@ if ( false )
      */
     function wpfunnel_deactivation_notice()
     {
-        $notice = sprintf(
-            // Translators: 1: Required PHP version, 2: Current PHP version.
-            '<strong>WP Funnel Manager</strong> requires PHP %1$s to run. This site uses %2$s, so the plugin has been <strong>deactivated</strong>.',
-            '7.1',
-            PHP_VERSION
-        );
+        $notice = '<strong>WP Funnel Manager</strong> has been <strong>deactivated</strong> due to the detection of an unresolvable conflict with another of your plugins. Please try again after deactivating your other plugins.';
         ?>
         <div class="updated"><p><?php echo wp_kses_post( $notice ); ?></p></div>
         <?php
@@ -62,6 +57,13 @@ if ( false )
     }
 
     return false;
+}
+else
+{
+	function wp_get_current_user()
+	{
+		return did_action( 'after_setup_theme' ) && ! doing_action( 'after_setup_theme' ) ? _wp_get_current_user() : new WP_User( 0, '' );
+	}
 }
 
 /**

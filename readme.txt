@@ -2,7 +2,7 @@
 Contributors: manfcarlo
 Tags: funnel builder, page builder, sales funnels, landing page, marketing, sales, block, blocks, block editor, gutenberg, template, templates
 Tested up to: 5.9
-Stable tag: 1.3.1
+Stable tag: 1.3.2
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -56,11 +56,22 @@ WP Funnel Manager requires the template editor, which is a new feature that some
 
 Once your active theme supports the template editor, all your funnels will be automatically restored.
 
+= Why did the plugin automatically deactivate itself? =
+
+This is a rare issue that the majority of users will never encounter.
+
+WP Funnel Manager requires a core function, [wp_get_current_user](https://developer.wordpress.org/reference/functions/wp_get_current_user/), to be re-defined in a certain way. Only one plugin at a time is allowed to re-define any given core function, [see this article for more explanation.](https://codex.wordpress.org/Pluggable_Functions) Therefore, if it is detected that another plugin is already re-defining this core function in its own way, WP Funnel Manager is unable to operate.
+
+By deactivating your other plugins one by one, and attemping to re-activate WP Funnel Manager, you can determine which one of your other plugins was causing the conflict with WP Funnel Manager. Once you have found it, you will be able to activate WP Funnel Manager and any other plugin not involved in the conflict.
+
 = How do I suggest a new feature or submit a bug report? =
 
 Through the WordPress support forum, or on the [GitHub page here.](https://github.com/carlomanf/wp-funnel-manager/issues)
 
 == Changelog ==
+
+= 1.3.2 =
+* Fixed the user roles, which were previously not working properly
 
 = 1.3.1 =
 * Turned off templated funnels for themes that don't support templates

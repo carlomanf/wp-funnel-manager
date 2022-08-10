@@ -39,6 +39,32 @@ class WP_Funnel_Manager
 	 */
 	private $funnel_types = array();
 
+	const ROLES = array(
+		'edit_funnels' => array(
+			'name' => 'Funnel Editor',
+			'capabilities' => array(
+				'author_funnels' => true,
+				'contribute_funnels' => true,
+				'read' => true,
+				'upload_files' => true
+			)
+		),
+		'author_funnels' => array(
+			'name' => 'Funnel Author',
+			'capabilities' => array(
+				'contribute_funnels' => true,
+				'read' => true,
+				'upload_files' => true
+			)
+		),
+		'contribute_funnels' => array(
+			'name' => 'Funnel Contributor',
+			'capabilities' => array(
+				'read' => true
+			)
+		)
+	);
+
 	public function is_legacy()
 	{
 		return $this->is_legacy;
@@ -72,10 +98,8 @@ class WP_Funnel_Manager
 			foreach ( (
 				new \WP_Query(
 					array(
-						'post_type' => 'wp_template',
+						'post_type' => 'wpfunnel_type',
 						'post_status' => 'publish',
-						'meta_key' => 'wpfunnel',
-						'meta_value' => '1',
 						'posts_per_page' => -1,
 						'orderby' => 'title',
 						'order' => 'ASC'
@@ -83,14 +107,9 @@ class WP_Funnel_Manager
 				)
 			)->posts as $post )
 			{
-				if ( strpos( $post->post_name, 'single-' ) === 0 )
+				if ( !$this->is_legacy || $post->post_name !== 'funnel' )
 				{
-					$slug = substr( $post->post_name, 7 );
-
-					if ( ( !$this->is_legacy || $slug !== 'funnel' ) && substr( $slug, -4 ) !== '_int' )
-					{
-						$this->funnel_types[] = new Funnel_Type( $slug, $post );
-					}
+					$this->funnel_types[] = new Funnel_Type( $post->post_name, $post->ID, $post->post_title, $post->post_content, $post->post_author );
 				}
 			}
 		}
@@ -106,6 +125,28 @@ class WP_Funnel_Manager
 		}
 	}
 
+	public function add_role( $roles )
+	{
+		foreach ( self::ROLES as $key => $value )
+		{
+			$roles->role_objects[ $key ] = new \WP_Role( $key, $value['capabilities'] );
+			$roles->role_names[ $key ] = $value['name'];
+		}
+	}
+
+	public function make_role_editable( $roles )
+	{
+		foreach ( self::ROLES as $key => $value )
+		{
+			if ( current_user_can( $key ) )
+			{
+				$roles[ $key ] = $value;
+			}
+		}
+
+		return $roles;
+	}
+
 	public function menu()
 	{
 		if ( $this->is_templated || $this->is_legacy )
@@ -113,8 +154,7 @@ class WP_Funnel_Manager
 			$new_type = 'wpfunnel';
 			$parent = $this->is_legacy ? 'edit.php?post_type=funnel' : $new_type;
 
-			$wp_template = get_post_type_object( 'wp_template' );
-			$new_type_capability = $wp_template === null ? 'do_not_allow' : $wp_template->cap->create_posts;
+			$new_type_capability = 'author_funnels';
 			$parent_capability = $this->is_legacy ? 'edit_posts' : $new_type_capability;
 
 			add_menu_page( 'Funnels', 'Funnels', $parent_capability, $parent, '', 'dashicons-filter', 25 );
@@ -131,11 +171,8 @@ class WP_Funnel_Manager
 	{
 		$num = 0;
 		$args = array(
-			'post_type' => 'wp_template',
-			'post_status' => 'publish',
-			'meta_input' => array(
-				'wpfunnel' => '1'
-			)
+			'post_type' => 'wpfunnel_type',
+			'post_status' => 'publish'
 		);
 
 		do {
@@ -180,9 +217,46 @@ class WP_Funnel_Manager
 	{
 		add_action( 'admin_footer', array( $this, 'no_funnels_notice' ) );
 		add_action( 'admin_menu', array( $this, 'menu' ), 9 );
-		add_action( 'init', array( $this, 'database_upgrade_130' ), 20 );
-		add_action( 'init', array( $this, 'database_upgrade_131' ), 20 );
+		add_action( 'init', array( $this, 'register_post_types' ) );
+		add_action( 'init', array( $this, 'database_upgrade' ), 20 );
 		add_action( 'after_setup_theme', array( $this, 'register_funnel_types' ) );
+		add_action( 'wp_roles_init', array( $this, 'add_role' ) );
+		add_filter( 'editable_roles', array( $this, 'make_role_editable' ) );
+	}
+
+	public function register_post_types()
+	{
+		register_post_type(
+			'wpfunnel_type',
+			array(
+				'public' => false,
+				'hierarchical' => false,
+				'exclude_from_search' => true,
+				'publicly_queryable' => false,
+				'show_ui' => false,
+				'show_in_menu' => false,
+				'show_in_nav_menus' => false,
+				'show_in_admin_bar' => false,
+				'show_in_rest' => false,
+				'capabilities' => array(
+					'create_posts' => 'author_funnels',
+					'delete_posts' => 'contribute_funnels',
+					'delete_others_posts' => 'edit_funnels',
+					'delete_private_posts' => 'edit_funnels',
+					'delete_published_posts' => 'author_funnels',
+					'edit_posts' => 'contribute_funnels',
+					'edit_others_posts' => 'edit_funnels',
+					'edit_private_posts' => 'edit_funnels',
+					'edit_published_posts' => 'author_funnels',
+					'publish_posts' => 'author_funnels',
+					'read' => 'author_funnels',
+					'read_private_posts' => 'edit_funnels'
+				),
+				'map_meta_cap' => true,
+				'has_archive' => false,
+				'query_var' => false
+			)
+		);
 	}
 
 	public function get_db_version()
@@ -190,7 +264,14 @@ class WP_Funnel_Manager
 		return (int) get_option( 'wpfunnel_db_version', 0 );
 	}
 
-	public function database_upgrade_130()
+	public function database_upgrade()
+	{
+		$this->database_upgrade_130();
+		$this->database_upgrade_131();
+		$this->database_upgrade_140();
+	}
+
+	private function database_upgrade_130()
 	{
 		if ( $this->get_db_version() >= 130 )
 		return;
@@ -219,7 +300,7 @@ class WP_Funnel_Manager
 	 *
 	 * @since 1.3.1
 	 */
-	public function database_upgrade_131()
+	private function database_upgrade_131()
 	{
 		if ( $this->get_db_version() >= 131 || !current_theme_supports( 'block-templates' ) )
 		return;
@@ -256,6 +337,46 @@ class WP_Funnel_Manager
 		}
 
 		update_option( 'wpfunnel_db_version', '131' );
+	}
+
+	/**
+	 * Change post type and add role.
+	 *
+	 * @since 1.4.0
+	 */
+	private function database_upgrade_140()
+	{
+		$version = $this->get_db_version();
+
+		if ( $version >= 140 || $version === 130 )
+		return;
+
+		$funnel_types = new \WP_Query(
+			array(
+				'post_type' => 'wp_template',
+				'post_status' => array( 'any', 'trash', 'auto-draft' ),
+				'meta_key' => 'wpfunnel',
+				'meta_value' => '1',
+				'posts_per_page' => -1
+			)
+		);
+
+		foreach ( $funnel_types->posts as $post )
+		{
+			delete_post_meta( $post->ID, 'wpfunnel' );
+
+			if ( strpos( $post->post_name, 'single-' ) === 0 )
+			{
+				wp_update_post( array( 'ID' => $post->ID, 'post_type' => 'wpfunnel_type', 'post_name' => substr( $post->post_name, 7 ) ) );
+			}
+		}
+
+		foreach ( get_users( 'capability=edit_theme_options' ) as $user )
+		{
+			$user->add_role( 'edit_funnels' );
+		}
+
+		update_option( 'wpfunnel_db_version', '140' );
 	}
 
 	public function no_funnels_notice()

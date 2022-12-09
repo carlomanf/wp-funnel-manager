@@ -194,37 +194,38 @@ class Funnel_Type extends Legacy_Funnel_Type
 		$template->id             = wp_get_theme()->get_stylesheet() . '//single-' . $this->slug;
 		$template->theme          = wp_get_theme()->get_stylesheet();
 		$template->content        = $this->blocks;
-		$template->slug           = $this->slug;
+		$template->slug           = 'single-' . $this->slug;
 		$template->source         = 'custom';
 		$template->type           = 'wp_template';
 		$template->description    = $this->title . ' is a WP Funnel Manager funnel type.';
 		$template->title          = $this->title;
 		$template->status         = 'publish';
 		$template->has_theme_file = false;
-		$template->is_custom      = true;
+		$template->is_custom      = !array_key_exists( $template->slug, get_default_block_template_types() );
 		$template->author         = $this->author;
 	}
 
 	public function add_template( $query_result, $query, $template_type )
 	{
-		if ( $template_type === 'wp_template' )
+		if ( $template_type === 'wp_template' && (
+			!isset( $query['slug__in'] ) || in_array( 'single-' . $this->slug, $query['slug__in'], true )
+		) && (
+			!isset( $query['wp_id'] ) || (int) $query['wp_id'] === $this->wp_id
+		) )
 		{
 			$id = wp_get_theme()->get_stylesheet() . '//single-' . $this->slug;
+			$replace_key = count( $query_result );
 
 			foreach ( array_keys( $query_result ) as $key )
 			{
 				if ( $query_result[ $key ]->id === $id )
 				{
+					$replace_key = $key;
 					break;
 				}
 			}
 
-			if ( $query_result[ $key ]->id !== $id )
-			{
-				$key = count( $query_result );
-			}
-
-			$this->construct_template( $query_result[ $key ] );
+			$this->construct_template( $query_result[ $replace_key ] );
 		}
 
 		return $query_result;

@@ -164,6 +164,11 @@ class Funnel_Type extends Legacy_Funnel_Type
 	 */
 	public function user_is_owner( $user )
 	{
+		if ( !did_action( 'init' ) || doing_action( 'init' ) )
+		{
+			return false;
+		}
+
 		if ( isset( $this->is_owner[ $user ] ) && is_bool( $this->is_owner[ $user ] ) )
 		{
 			return $this->is_owner[ $user ];

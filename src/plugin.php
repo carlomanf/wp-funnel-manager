@@ -107,9 +107,14 @@ class WP_Funnel_Manager
 				)
 			)->posts as $post )
 			{
-				if ( !$this->is_legacy || $post->post_name !== 'funnel' )
+				if ( strpos( $post->post_name, 'single-' ) === 0 )
 				{
-					$this->funnel_types[] = new Funnel_Type( $post->post_name, $post->ID, $post->post_title, $post->post_content, $post->post_author );
+					$slug = substr( $post->post_name, 7 );
+
+					if ( !$this->is_legacy || $slug !== 'funnel' )
+					{
+						$this->funnel_types[] = new Funnel_Type( $slug, $post->ID, $post->post_title, $post->post_content, $post->post_author );
+					}
 				}
 			}
 		}

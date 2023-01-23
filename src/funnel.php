@@ -16,6 +16,34 @@ class Funnel_Type extends Legacy_Funnel_Type
 	private $contributor_role;
 	private $is_owner = array();
 
+	/**
+	 * If a workaround is needed for core ticket #52043, one funnel type is stored here to be assigned as the parent menu.
+	 *
+	 * @since 1.4.0
+	 */
+	private static $type_for_parent_menu = null;
+
+	/**
+	 * Returns the type that is assigned to the parent menu, if set.
+	 *
+	 * @since 1.4.0
+	 */
+	public static function get_type_for_parent_menu()
+	{
+		return self::$type_for_parent_menu;
+	}
+
+	/**
+	 * Getter.
+	 *
+	 * @since 1.4.0
+	 */
+	public function __get( $key )
+	{
+		if ( $key === 'slug' ) return $this->slug;
+		if ( $key === 'title' ) return $this->title;
+	}
+
 	public function __construct( $slug, $wp_id, $title, $blocks, $author )
 	{
 		parent::__construct();
@@ -31,7 +59,6 @@ class Funnel_Type extends Legacy_Funnel_Type
 		unset( $this->exterior_args['labels'] );
 
 		$this->exterior_args['hierarchical'] = false;
-		$this->exterior_args['show_in_menu'] = $GLOBALS['wpfunnel']->is_legacy() ? 'edit.php?post_type=funnel' : 'wpfunnel';
 		$this->exterior_args['capability_type'] = array( $this->slug, $this->slug . '_any' );
 		$this->exterior_args['supports'] = array_diff( $this->exterior_args['supports'], array( 'page-attributes' ) );
 
@@ -100,9 +127,51 @@ class Funnel_Type extends Legacy_Funnel_Type
 		add_filter( 'single_template_hierarchy', array( $this, 'apply_template_to_interior' ) );
 		add_action( 'wp_roles_init', array( $this, 'add_role' ) );
 		add_filter( 'after_setup_theme', array( __CLASS__, 'regenerate_roles' ), 11 );
+		add_action( 'init', array( $this, 'assign_menu' ), 9 );
 
 		remove_filter( 'page_row_actions', array( $this, 'funnel_interior_edit' ), 10, 2 );
 		add_filter( 'post_row_actions', array( $this, 'funnel_interior_edit' ), 10, 2 );
+	}
+
+	/**
+	 * Assign the admin menu for this funnel type.
+	 *
+	 * This must be called after the `wpfunnel_type` post type is registered at priority 8, and before this type is registered at priority 10.
+	 *
+	 * @since 1.4.0
+	 */
+	public function assign_menu()
+	{
+		if ( isset( self::$type_for_parent_menu ) )
+		{
+			$this->exterior_args['show_in_menu'] = 'edit.php?post_type=' . self::$type_for_parent_menu->slug;
+		}
+		else
+		{
+			$is_legacy = $GLOBALS['wpfunnel']->is_legacy();
+			$capability = $is_legacy ? 'edit_posts' : 'author_funnels';
+
+			if ( current_user_can( $capability ) )
+			{
+				$this->exterior_args['show_in_menu'] = $is_legacy ? 'edit.php?post_type=funnel' : 'wpfunnel';
+			}
+			else
+			{
+				if ( $is_legacy && current_user_can( 'author_funnels' ) )
+				{
+					$this->exterior_args['show_in_menu'] = 'wpfunnel';
+				}
+				else
+				{
+					if ( current_user_can( 'edit_' . $this->slug . '_any' ) )
+					{
+						self::$type_for_parent_menu = $this;
+					}
+
+					$this->exterior_args['show_in_menu'] = false;
+				}
+			}
+		}
 	}
 
 	public static function regenerate_roles()
@@ -157,14 +226,17 @@ class Funnel_Type extends Legacy_Funnel_Type
 	}
 
 	/**
-	 * Determine whether a user is the owner of this funnel type
-	 * They are an owner if they can edit the original template
+	 * Determine whether a user is the owner of this funnel type.
+	 * They are an owner if they can edit the original template.
+	 *
+	 * Note: Since this function checks the `edit_post` meta capability, it will never return true if called before post types are registered at `init`.
 	 *
 	 * @since 1.2.0
 	 */
 	public function user_is_owner( $user )
 	{
-		if ( !did_action( 'init' ) || doing_action( 'init' ) )
+		// Avoid caching the result if post type is not registered yet.
+		if ( !post_type_exists( 'wpfunnel_type' ) )
 		{
 			return false;
 		}

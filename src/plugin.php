@@ -162,7 +162,21 @@ class WP_Funnel_Manager
 			$new_type_capability = 'author_funnels';
 			$parent_capability = $this->is_legacy ? 'edit_posts' : $new_type_capability;
 
+			// Workaround for core ticket #52043. If the bug is encountered, the menu for one of the funnel types needs to be registered separately here.
+			$type = Funnel_Type::get_type_for_parent_menu();
+
+			if ( !is_null( $type ) || $this->is_legacy && $this->is_templated && !current_user_can( $parent_capability ) && current_user_can( $new_type_capability ) )
+			{
+				$parent_capability = is_null( $type ) ? $new_type_capability : 'edit_' . $type->slug . '_any';
+				$parent = is_null( $type ) ? $new_type : 'edit.php?post_type=' . $type->slug;
 				add_menu_page( 'Funnels', 'Funnels', $parent_capability, $parent, '', 'dashicons-filter', 25 );
+				is_null( $type ) || add_submenu_page( $parent, $type->title, $type->title, $parent_capability, $parent, '', 20 );
+			}
+			else
+			{
+				// No workaround needed.
+				add_menu_page( 'Funnels', 'Funnels', $parent_capability, $parent, '', 'dashicons-filter', 25 );
+			}
 
 			if ( $this->is_templated )
 			{
@@ -222,7 +236,7 @@ class WP_Funnel_Manager
 	{
 		add_action( 'admin_footer', array( $this, 'no_funnels_notice' ) );
 		add_action( 'admin_menu', array( $this, 'menu' ), 9 );
-		add_action( 'init', array( $this, 'register_post_types' ) );
+		add_action( 'init', array( $this, 'register_post_types' ), 8 );
 		add_action( 'init', array( $this, 'database_upgrade' ), 20 );
 		add_action( 'after_setup_theme', array( $this, 'register_funnel_types' ) );
 		add_action( 'wp_roles_init', array( $this, 'add_role' ) );

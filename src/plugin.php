@@ -162,7 +162,7 @@ class WP_Funnel_Manager
 			$new_type_capability = 'author_funnels';
 			$parent_capability = $this->is_legacy ? 'edit_posts' : $new_type_capability;
 
-			add_menu_page( 'Funnels', 'Funnels', $parent_capability, $parent, '', 'dashicons-filter', 25 );
+				add_menu_page( 'Funnels', 'Funnels', $parent_capability, $parent, '', 'dashicons-filter', 25 );
 
 			if ( $this->is_templated )
 			{
@@ -372,7 +372,7 @@ class WP_Funnel_Manager
 
 			if ( strpos( $post->post_name, 'single-' ) === 0 )
 			{
-				wp_update_post( array( 'ID' => $post->ID, 'post_type' => 'wpfunnel_type', 'post_name' => substr( $post->post_name, 7 ) ) );
+				wp_update_post( array( 'ID' => $post->ID, 'post_type' => 'wpfunnel_type' ) );
 			}
 		}
 

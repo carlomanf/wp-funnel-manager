@@ -22,7 +22,8 @@ if ( ! defined( 'WP_FUNNEL_URL' ) )
 
 // Load funnel type classes.
 require WP_FUNNEL_DIR . 'src/legacy.php';
-require WP_FUNNEL_DIR . 'src/funnel.php';
+require WP_FUNNEL_DIR . 'src/dynamic.php';
+require WP_FUNNEL_DIR . 'src/natural.php';
 
 // Load other classes.
 require WP_FUNNEL_DIR . 'src/plugin.php';

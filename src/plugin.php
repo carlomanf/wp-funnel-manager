@@ -113,7 +113,7 @@ class WP_Funnel_Manager
 
 					if ( !$this->is_legacy || $slug !== 'funnel' )
 					{
-						$this->funnel_types[] = new Funnel_Type( $slug, $post->ID, $post->post_title, $post->post_content, $post->post_author );
+						$this->funnel_types[] = new Natural_Funnel_Type( $slug, $post->ID, $post->post_title, $post->post_content, $post->post_author );
 					}
 				}
 			}
@@ -163,7 +163,7 @@ class WP_Funnel_Manager
 			$parent_capability = $this->is_legacy ? 'edit_posts' : $new_type_capability;
 
 			// Workaround for core ticket #52043. If the bug is encountered, the menu for one of the funnel types needs to be registered separately here.
-			$type = Funnel_Type::get_type_for_parent_menu();
+			$type = Dynamic_Funnel_Type::get_type_for_parent_menu();
 
 			if ( !is_null( $type ) || $this->is_legacy && $this->is_templated && !current_user_can( $parent_capability ) && current_user_can( $new_type_capability ) )
 			{

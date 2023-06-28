@@ -1,11 +1,11 @@
 <?php
 
 /**
- * Main funnel class.
+ * Dynamic funnel class.
  */
 namespace WP_Funnel_Manager;
 
-class Funnel_Type extends Legacy_Funnel_Type
+class Dynamic_Funnel_Type extends Legacy_Funnel_Type
 {
 	private $wp_id;
 	private $title;

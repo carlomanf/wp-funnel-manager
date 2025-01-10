@@ -49,6 +49,7 @@ class Dynamic_Funnel_Type extends Legacy_Funnel_Type
 		parent::__construct();
 
 		$this->slug = $slug;
+		$this->interior_slug = $slug . '_int';
 		$this->wp_id = $wp_id;
 		$this->title = $title;
 		$this->blocks = $blocks;
@@ -149,27 +150,20 @@ class Dynamic_Funnel_Type extends Legacy_Funnel_Type
 		else
 		{
 			$is_legacy = $GLOBALS['wpfunnel']->is_legacy();
-			$capability = $is_legacy ? 'edit_posts' : 'author_funnels';
+			$capability = $is_legacy ? 'edit_posts' : 'contribute_funnels';
 
 			if ( current_user_can( $capability ) )
 			{
-				$this->exterior_args['show_in_menu'] = $is_legacy ? 'edit.php?post_type=funnel' : 'wpfunnel';
+				$this->exterior_args['show_in_menu'] = $is_legacy ? 'edit.php?post_type=funnel' : 'edit.php?post_type=wpfunnel_head';
 			}
 			else
 			{
-				if ( $is_legacy && current_user_can( 'author_funnels' ) )
+				if ( current_user_can( 'edit_' . $this->slug . '_any' ) )
 				{
-					$this->exterior_args['show_in_menu'] = 'wpfunnel';
+					self::$type_for_parent_menu = $this;
 				}
-				else
-				{
-					if ( current_user_can( 'edit_' . $this->slug . '_any' ) )
-					{
-						self::$type_for_parent_menu = $this;
-					}
 
-					$this->exterior_args['show_in_menu'] = false;
-				}
+				$this->exterior_args['show_in_menu'] = false;
 			}
 		}
 	}
@@ -344,8 +338,8 @@ class Dynamic_Funnel_Type extends Legacy_Funnel_Type
 	{
 		if ( $this->slug === $post->post_type )
 		{
-			$interiors = new \WP_Query( 'posts_per_page=-1&post_status=any,trash,auto-draft&post_type=' . $this->slug . '_int&post_parent=' . $post_id );
-		
+			$interiors = new \WP_Query( 'posts_per_page=-1&post_status=any,trash,auto-draft&post_type=' . $this->interior_slug . '&post_parent=' . $post_id );
+
 			foreach ( $interiors->posts as $interior )
 			{
 				wp_update_post( array( 'ID' => $interior->ID, 'post_author' => $post->post_author ) );

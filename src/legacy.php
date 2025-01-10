@@ -8,12 +8,14 @@ namespace WP_Funnel_Manager;
 class Legacy_Funnel_Type
 {
 	protected $slug;
+	protected $interior_slug;
 	protected $interior_args;
 	protected $exterior_args;
 	
 	public function __construct()
 	{
 		$this->slug = 'funnel';
+		$this->interior_slug = 'funnel_int';
 
 		$this->exterior_args = array(
 			'label' => __( 'Funnels', 'wpfunnel' ),
@@ -26,7 +28,8 @@ class Legacy_Funnel_Type
 			'exclude_from_search' => false,
 			'publicly_queryable' => true,
 			'show_ui' => true,
-			'show_in_menu' => false,
+			'show_in_menu' => true,
+			'menu_icon' => 'dashicons-filter',
 			'show_in_nav_menus' => true,
 			'show_in_admin_bar' => true,
 			'show_in_rest' => true,
@@ -107,11 +110,11 @@ class Legacy_Funnel_Type
 	public function new_interior( $url, $path )
 	{
 		// Validate path
-		if ( strpos( $path, 'post-new.php?post_type=' . $this->slug . '_int' ) !== 0 )
+		if ( strpos( $path, 'post-new.php?post_type=' . $this->interior_slug ) !== 0 )
 			return $url;
 
 		// Validate post type
-		if ( $this->slug . '_int' != get_query_var( 'post_type' ) )
+		if ( $this->interior_slug != get_query_var( 'post_type' ) )
 			return $url;
 
 		$post_parent = get_query_var( 'post_parent' );
@@ -140,7 +143,7 @@ class Legacy_Funnel_Type
 	public function register_taxonomies()
 	{
 		register_post_type( $this->slug, $this->exterior_args );
-		register_post_type( $this->slug . '_int', $this->interior_args );
+		register_post_type( $this->interior_slug, $this->interior_args );
 	}
 
 	/**
@@ -167,7 +170,7 @@ class Legacy_Funnel_Type
 		if ( $this->slug != $post->post_type )
 			return $actions;
 
-		$url = admin_url( 'edit.php?post_type=' . $this->slug . '_int&post_parent=' . $post->ID );
+		$url = admin_url( 'edit.php?post_type=' . $this->interior_slug . '&post_parent=' . $post->ID );
 		$actions['edit_interiors'] = '<a href="' . esc_url( $url ) . '">' . __( 'Edit Steps', 'wpfunnel' ) . '</a>';
 
 		return $actions;
@@ -196,7 +199,7 @@ class Legacy_Funnel_Type
 
 	public function setup_interior( $data )
 	{
-		if ( $data['post_type'] != $this->slug . '_int' )
+		if ( $data['post_type'] != $this->interior_slug )
 		{
 			return $data;
 		}
@@ -226,7 +229,7 @@ class Legacy_Funnel_Type
 		if ( !( $exterior = get_post( $post_id ) ) || $this->slug != $exterior->post_type )
 			return;
 
-		$interiors = new \WP_Query( 'posts_per_page=-1&orderby=menu_order&order=ASC&post_status=any,trash,auto-draft&post_type=' . $this->slug . '_int&post_parent=' . $post_id );
+		$interiors = new \WP_Query( 'posts_per_page=-1&orderby=menu_order&order=ASC&post_status=any,trash,auto-draft&post_type=' . $this->interior_slug . '&post_parent=' . $post_id );
 		$promoted_id = 0;
 
 		foreach ( $interiors->posts as $interior )

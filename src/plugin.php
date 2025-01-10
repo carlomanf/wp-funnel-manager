@@ -113,7 +113,7 @@ class WP_Funnel_Manager
 
 					if ( !$this->is_legacy || $slug !== 'funnel' )
 					{
-						$this->funnel_types[] = new Natural_Funnel_Type( $slug, $post->ID, $post->post_title, $post->post_content, $post->post_author );
+						$this->funnel_types[] = new Dynamic_Funnel_Type( $slug, $post->ID, $post->post_title, $post->post_content, $post->post_author );
 					}
 				}
 			}
@@ -122,6 +122,13 @@ class WP_Funnel_Manager
 		if ( $this->is_legacy )
 		{
 			$this->funnel_types[] = new Legacy_Funnel_Type();
+		}
+		else
+		{
+			if ( $this->is_templated )
+			{
+				$this->funnel_types[] = new Natural_Funnel_Type();
+			}
 		}
 
 		foreach ( $this->funnel_types as $type )
@@ -156,75 +163,20 @@ class WP_Funnel_Manager
 	{
 		if ( $this->is_templated || $this->is_legacy )
 		{
-			$new_type = 'wpfunnel';
-			$parent = $this->is_legacy ? 'edit.php?post_type=funnel' : $new_type;
-
-			$new_type_capability = 'author_funnels';
-			$parent_capability = $this->is_legacy ? 'edit_posts' : $new_type_capability;
+			$parent = $this->is_legacy ? 'edit.php?post_type=funnel' : 'edit.php?post_type=wpfunnel_head';
+			$parent_capability = $this->is_legacy ? 'edit_posts' : 'contribute_funnels';
 
 			// Workaround for core ticket #52043. If the bug is encountered, the menu for one of the funnel types needs to be registered separately here.
 			$type = Dynamic_Funnel_Type::get_type_for_parent_menu();
 
-			if ( !is_null( $type ) || $this->is_legacy && $this->is_templated && !current_user_can( $parent_capability ) && current_user_can( $new_type_capability ) )
+			if ( isset( $type ) )
 			{
-				$parent_capability = is_null( $type ) ? $new_type_capability : 'edit_' . $type->slug . '_any';
-				$parent = is_null( $type ) ? $new_type : 'edit.php?post_type=' . $type->slug;
+				$parent = 'edit.php?post_type=' . $type->slug;
+				$parent_capability = 'edit_' . $type->slug . '_any';
 				add_menu_page( 'Funnels', 'Funnels', $parent_capability, $parent, '', 'dashicons-filter', 25 );
-				is_null( $type ) || add_submenu_page( $parent, $type->title, $type->title, $parent_capability, $parent, '', 20 );
-			}
-			else
-			{
-				// No workaround needed.
-				add_menu_page( 'Funnels', 'Funnels', $parent_capability, $parent, '', 'dashicons-filter', 25 );
-			}
-
-			if ( $this->is_templated )
-			{
-				$hook_suffix = add_submenu_page( $parent, 'New Funnel Type', 'New Funnel Type', $new_type_capability, $new_type, array( $this, 'new_funnel_type' ), 20 );
-				add_action( 'load-' . $hook_suffix, array( $this, 'new_funnel_type' ) );
+				add_submenu_page( $parent, $type->title, $type->title, $parent_capability, $parent, '', 20 );
 			}
 		}
-	}
-
-	public function new_funnel_type()
-	{
-		$num = 0;
-		$args = array(
-			'post_type' => 'wpfunnel_type',
-			'post_status' => 'publish'
-		);
-
-		do {
-			$num++;
-			$args = array_replace(
-				$args,
-				array(
-					'title' => 'New Funnel Type ' . $num
-				)
-			);
-		}
-		while ( ( new \WP_Query( $args ) )->have_posts() );
-
-		$type = uniqid();
-
-		wp_insert_post(
-			array_diff_assoc(
-				array_replace(
-					$args,
-					array(
-						'post_name' => 'single-' . $type,
-						'post_content' => '<!-- wp:post-content /-->',
-						'post_title' => $args['title']
-					)
-				),
-				array(
-					'title' => $args['title']
-				)
-			)
-		);
-
-		wp_redirect( admin_url( 'post-new.php?post_type=' . $type ) );
-		exit;
 	}
 
 	/**

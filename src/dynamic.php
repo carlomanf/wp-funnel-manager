@@ -258,18 +258,18 @@ class Dynamic_Funnel_Type extends Legacy_Funnel_Type
 		return $roles;
 	}
 
-	private function construct_template( &$template )
+	protected function construct_template( &$template, $slug, $title, $blocks )
 	{
 		$template                 = new \WP_Block_Template();
 		$template->wp_id          = $this->wp_id;
-		$template->id             = wp_get_theme()->get_stylesheet() . '//single-' . $this->slug;
+		$template->id             = wp_get_theme()->get_stylesheet() . '//' . $slug;
 		$template->theme          = wp_get_theme()->get_stylesheet();
-		$template->content        = $this->blocks;
-		$template->slug           = 'single-' . $this->slug;
+		$template->content        = $blocks;
+		$template->slug           = $slug;
 		$template->source         = 'custom';
 		$template->type           = 'wp_template';
-		$template->description    = $this->title . ' is a WP Funnel Manager funnel type.';
-		$template->title          = $this->title;
+		$template->description    = $title . ' is a WP Funnel Manager funnel type.';
+		$template->title          = $title;
 		$template->status         = 'publish';
 		$template->has_theme_file = false;
 		$template->is_custom      = !array_key_exists( $template->slug, get_default_block_template_types() );
@@ -296,7 +296,7 @@ class Dynamic_Funnel_Type extends Legacy_Funnel_Type
 				}
 			}
 
-			$this->construct_template( $query_result[ $replace_key ] );
+			$this->construct_template( $query_result[ $replace_key ], 'single-' . $this->slug, $this->title, $this->blocks );
 		}
 
 		return $query_result;
@@ -306,7 +306,7 @@ class Dynamic_Funnel_Type extends Legacy_Funnel_Type
 	{
 		if ( $template_type === 'wp_template' && $id === wp_get_theme()->get_stylesheet() . '//single-' . $this->slug )
 		{
-			$this->construct_template( $block_template );
+			$this->construct_template( $block_template, 'single-' . $this->slug, $this->title, $this->blocks );
 		}
 
 		return $block_template;

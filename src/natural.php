@@ -8,7 +8,7 @@ namespace WP_Funnel_Manager;
 class Natural_Funnel_Type extends Dynamic_Funnel_Type
 {
 	private $added_wp_link_pages = array();
-	private $query;
+	private $query = null;
 
 	public function __construct()
 	{

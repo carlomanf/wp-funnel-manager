@@ -8,6 +8,7 @@ namespace WP_Funnel_Manager;
 class Natural_Funnel_Type extends Dynamic_Funnel_Type
 {
 	private $added_wp_link_pages = array();
+	private $query = null;
 	private $steps = array();
 	const PERM_PATTERN = '%2$d_funnel_%1$d';
 
@@ -90,6 +91,75 @@ class Natural_Funnel_Type extends Dynamic_Funnel_Type
 		}
 
 		return $content;
+	}
+
+	public function create_query()
+	{
+		if ( !isset( $this->query ) )
+		{
+			$this->query = new \WP_Query(
+				array(
+					'post_type' => 'wpfunnel_head',
+					'post_status' => 'publish',
+					'posts_per_page' => -1
+				)
+			);
+		}
+	}
+
+	public function add_template( $query_result, $query, $template_type )
+	{
+		$this->create_query();
+
+		foreach ( $this->query->posts as $funnel )
+		{
+			if ( $template_type === 'wp_template' && (
+				!isset( $query['slug__in'] ) || in_array( 'single-' . $this->slug . '-' . $funnel->post_name, $query['slug__in'], true )
+			) && (
+				!isset( $query['wp_id'] ) || (int) $query['wp_id'] === $funnel->ID
+			) )
+			{
+				$id = wp_get_theme()->get_stylesheet() . '//single-' . $this->slug . '-' . $funnel->post_name;
+				$replace_key = count( $query_result );
+
+				foreach ( array_keys( $query_result ) as $key )
+				{
+					if ( $query_result[ $key ]->id === $id )
+					{
+						$replace_key = $key;
+						break;
+					}
+				}
+
+				$this->construct_template( $query_result[ $replace_key ], 'single-' . $this->slug . '-' . $funnel->post_name, $funnel->post_title, $funnel->post_content );
+			}
+		}
+
+		return $query_result;
+	}
+
+	public function replace_template( $block_template, $id, $template_type )
+	{
+		if ( $template_type === 'wp_template' && strpos( $id, wp_get_theme()->get_stylesheet() . '//single-' . $this->slug . '-' ) === 0 )
+		{
+			$this->create_query();
+
+			$funnel_slug = substr( $id, strrpos( $id, '-' ) + 1 );
+			$funnel = null;
+
+			foreach ( $this->query->posts as $post )
+			{
+				if ( $post->post_name === $funnel_slug )
+				{
+					$funnel = $post;
+					break;
+				}
+			}
+
+			isset( $funnel ) and $this->construct_template( $block_template, 'single-' . $this->slug . '-' . $funnel_slug, $funnel->post_title, $funnel->post_content );
+		}
+
+		return $block_template;
 	}
 
 	private function update_user( $user, $funnel, $step )

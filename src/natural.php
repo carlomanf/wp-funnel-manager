@@ -8,7 +8,8 @@ namespace WP_Funnel_Manager;
 class Natural_Funnel_Type extends Dynamic_Funnel_Type
 {
 	private $added_wp_link_pages = array();
-	private $query;
+	private $steps = array();
+	const PERM_PATTERN = '%2$d_funnel_%1$d';
 
 	public function __construct()
 	{
@@ -63,6 +64,12 @@ class Natural_Funnel_Type extends Dynamic_Funnel_Type
 		// Workaround for https://github.com/WordPress/gutenberg/issues/29484
 		add_filter( 'the_content', array( $this, 'add_wp_link_pages' ), 0 );
 		add_filter( 'wp_link_pages_args', array( $this, 'added_wp_link_pages' ) );
+
+		// Add content_pagination filter
+		add_filter( 'content_pagination', array( $this, 'populate_funnel_steps' ) );
+
+		// Add pre_handle_404 filter
+		add_filter( 'pre_handle_404', array( $this, 'handle_404' ) );
 	}
 
 	public function added_wp_link_pages( $parsed_args )
@@ -85,72 +92,116 @@ class Natural_Funnel_Type extends Dynamic_Funnel_Type
 		return $content;
 	}
 
-	public function create_query()
+	private function update_user( $user, $funnel, $step )
 	{
-		if ( !isset( $this->query ) )
-		{
-			$this->query = new \WP_Query(
-				array(
-					'post_type' => 'wpfunnel_head',
-					'post_status' => 'publish',
-					'posts_per_page' => -1
-				)
-			);
-		}
+		$steps = get_user_option( 'wpfunnel_steps', $user );
+		$permissions = get_user_option( 'wpfunnel_permissions', $user );
+
+		$permissions[] = sprintf( self::PERM_PATTERN, $funnel, $step );
+		update_user_option( $user, 'wpfunnel_permissions', array_unique( $permissions ) );
+
+		$steps[ $funnel ] = (string) $step;
+		update_user_option( $user, 'wpfunnel_steps', $steps );
 	}
 
-	public function add_template( $query_result, $query, $template_type )
+	// Populate funnel steps using content_pagination filter
+	public function populate_funnel_steps( $pages )
 	{
-		$this->create_query();
-
-		foreach ( $this->query->posts as $funnel )
+		if ( get_post_type() === $this->slug )
 		{
-			if ( $template_type === 'wp_template' && (
-				!isset( $query['slug__in'] ) || in_array( 'single-' . $this->slug . '-' . $funnel->post_name, $query['slug__in'], true )
-			) && (
-				!isset( $query['wp_id'] ) || (int) $query['wp_id'] === $funnel->ID
-			) )
-			{
-				$id = wp_get_theme()->get_stylesheet() . '//single-' . $this->slug . '-' . $funnel->post_name;
-				$replace_key = count( $query_result );
+			$this->assign_steps( get_the_ID() );
 
-				foreach ( array_keys( $query_result ) as $key )
+			$pages = array();
+			foreach ( $this->steps[ get_the_ID() ] as $step )
+			{
+				$pages[] = $step->post_content;
+			}
+		}
+
+		return $pages;
+	}
+
+	// Custom handler for pre_handle_404 filter
+	public function handle_404( $handled )
+	{
+		if ( is_singular( $this->slug ) && !is_404() )
+		{
+			global $wp_query, $page;
+
+			$user = get_current_user_id();
+			$funnel = get_the_ID();
+			$nonces = get_user_option( 'wpfunnel_nonces', $user );
+
+			$this->assign_steps( $funnel );
+
+			if ( $page <= count( $this->steps[ $funnel ] ) )
+			{
+				$this->update_user( $user, $funnel, $this->steps[ $funnel ][ $page - 1 ]->ID );
+				$this->assign_steps( $funnel, true );
+
+				$nonces = array();
+
+				foreach ( $this->steps[ $funnel ] as $step )
 				{
-					if ( $query_result[ $key ]->id === $id )
+					$nonces[ (string) $step->ID ] = uniqid();
+				}
+
+				update_user_option( $user, 'wpfunnel_nonces', $nonces );
+
+				status_header( 200 );
+			}
+			else
+			{
+				$wp_query->set_404();
+				status_header( 404 );
+				nocache_headers();
+			}
+
+			$handled = true;
+		}
+
+		return $handled;
+	}
+
+	// Assign steps if not already assigned
+	private function assign_steps( $id, $force = false )
+	{
+		if ( !isset( $this->steps[ $id ] ) || $force )
+		{
+			 $query = new \WP_Query( array(
+				'post_type' => $this->interior_slug,
+				'post_parent' => $id,
+				'posts_per_page' => -1,
+				'orderby' => 'menu_order',
+				'order' => 'ASC',
+				'post_status' => 'publish'
+			) );
+
+			if ( current_user_can( 'edit_post', $id ) )
+			{
+				$this->steps[ $id ] = $query->posts;
+			}
+			else
+			{
+				$this->steps[ $id ] = array();
+				$user = get_current_user_id();
+
+				foreach ( $query->posts as $step )
+				{
+					$permission = true;
+					$permissions = get_user_option( 'wpfunnel_permissions', $user );
+
+					foreach ( $query->posts as $other_step )
 					{
-						$replace_key = $key;
-						break;
+						if ( $other_step->menu_order < $step->menu_order )
+						{
+							$permission = $permission && in_array( sprintf( self::PERM_PATTERN, $id, $other_step->ID ), $permissions, true );
+						}
 					}
-				}
 
-				$this->construct_template( $query_result[ $replace_key ], 'single-' . $this->slug . '-' . $funnel->post_name, $funnel->post_title, $funnel->post_content );
-			}
-		}
-
-		return $query_result;
-	}
-
-	public function replace_template( $block_template, $id, $template_type )
-	{
-		if ( $template_type === 'wp_template' && strpos( $id, wp_get_theme()->get_stylesheet() . '//single-' . $this->slug . '-' ) === 0 )
-		{
-			$this->create_query();
-
-			$funnel_slug = substr( $id, strrpos( $id, '-' ) + 1 );
-			$funnel = null;
-
-			foreach ( $this->query->posts as $post )
-			{
-				if ( $post->post_name === $funnel_slug )
-				{
-					$funnel = $post;
-					break;
+					$permission and $this->steps[ $id ][] = $step;
 				}
 			}
-
-			isset( $funnel ) and $this->construct_template( $block_template, 'single-' . $this->slug . '-' . $funnel_slug, $funnel->post_title, $funnel->post_content );
 		}
-
-		return $block_template;
 	}
 }

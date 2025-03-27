@@ -67,10 +67,10 @@ class Natural_Funnel_Type extends Dynamic_Funnel_Type
 		add_filter( 'wp_link_pages_args', array( $this, 'added_wp_link_pages' ) );
 
 		// Add content_pagination filter
-		add_filter( 'content_pagination', array( $this, 'populate_funnel_steps' ) );
+		add_filter( 'content_pagination', array( $this, 'populate_funnel_steps' ), 10, 2 );
 
 		// Add pre_handle_404 filter
-		add_filter( 'pre_handle_404', array( $this, 'handle_404' ) );
+		add_filter( 'pre_handle_404', array( $this, 'handle_404' ), 10, 2 );
 	}
 
 	public function added_wp_link_pages( $parsed_args )
@@ -175,14 +175,14 @@ class Natural_Funnel_Type extends Dynamic_Funnel_Type
 	}
 
 	// Populate funnel steps using content_pagination filter
-	public function populate_funnel_steps( $pages )
+	public function populate_funnel_steps( $pages, $post )
 	{
-		if ( get_post_type() === $this->slug )
+		if ( $post->post_type === $this->slug )
 		{
-			$this->assign_steps( get_the_ID() );
+			$this->assign_steps( $post->ID );
 
 			$pages = array();
-			foreach ( $this->steps[ get_the_ID() ] as $step )
+			foreach ( $this->steps[ $post->ID ] as $step )
 			{
 				$pages[] = $step->post_content;
 			}
@@ -192,11 +192,12 @@ class Natural_Funnel_Type extends Dynamic_Funnel_Type
 	}
 
 	// Custom handler for pre_handle_404 filter
-	public function handle_404( $handled )
+	public function handle_404( $handled, $query )
 	{
-		if ( is_singular( $this->slug ) && !is_404() )
+		if ( $query->is_singular( $this->slug ) )
 		{
-			global $wp_query, $page;
+			$query->the_post();
+			global $page;
 
 			$user = get_current_user_id();
 			$funnel = get_the_ID();
@@ -222,7 +223,7 @@ class Natural_Funnel_Type extends Dynamic_Funnel_Type
 			}
 			else
 			{
-				$wp_query->set_404();
+				$query->set_404();
 				status_header( 404 );
 				nocache_headers();
 			}

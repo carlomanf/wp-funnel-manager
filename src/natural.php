@@ -164,8 +164,8 @@ class Natural_Funnel_Type extends Dynamic_Funnel_Type
 
 	private function update_user( $user, $funnel, $step )
 	{
-		$steps = get_user_option( 'wpfunnel_steps', $user );
-		$permissions = get_user_option( 'wpfunnel_permissions', $user );
+		$steps = (array) get_user_option( 'wpfunnel_steps', $user );
+		$permissions = (array) get_user_option( 'wpfunnel_permissions', $user );
 
 		$permissions[] = sprintf( self::PERM_PATTERN, $funnel, $step );
 		update_user_option( $user, 'wpfunnel_permissions', array_unique( $permissions ) );
@@ -201,7 +201,6 @@ class Natural_Funnel_Type extends Dynamic_Funnel_Type
 
 			$user = get_current_user_id();
 			$funnel = get_the_ID();
-			$nonces = get_user_option( 'wpfunnel_nonces', $user );
 
 			$this->assign_steps( $funnel );
 
@@ -260,7 +259,7 @@ class Natural_Funnel_Type extends Dynamic_Funnel_Type
 				foreach ( $query->posts as $step )
 				{
 					$permission = true;
-					$permissions = get_user_option( 'wpfunnel_permissions', $user );
+					$permissions = (array) get_user_option( 'wpfunnel_permissions', $user );
 
 					foreach ( $query->posts as $other_step )
 					{

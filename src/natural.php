@@ -196,11 +196,9 @@ class Natural_Funnel_Type extends Dynamic_Funnel_Type
 	{
 		if ( $query->is_singular( $this->slug ) )
 		{
-			$query->the_post();
-			global $page;
-
+			$funnel = $query->posts[0]->ID;
+			$page = $query->generate_postdata( $funnel )['page'];
 			$user = get_current_user_id();
-			$funnel = get_the_ID();
 
 			$this->assign_steps( $funnel );
 

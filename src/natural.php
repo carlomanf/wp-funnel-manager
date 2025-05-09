@@ -74,6 +74,45 @@ class Natural_Funnel_Type extends Dynamic_Funnel_Type
 
 		// Use wp_link_pages_link filter to include nonces in pagination links
 		add_filter( 'wp_link_pages_link', array( $this, 'add_nonces_to_pagination_links' ), 10, 2 );
+
+		// Redirect to current step if nonce is not valid
+		add_action( 'template_redirect', array( $this, 'redirect_to_current_step' ) );
+	}
+
+	public function redirect_to_current_step()
+	{
+		if ( is_404() )
+		{
+			$post_id = 0;
+
+			if ( $GLOBALS['wp_query']->queried_object instanceof WP_Post )
+			{
+				$post_id = $GLOBALS['wp_query']->queried_object->ID;
+			}
+			else
+			{
+				$GLOBALS['wp_query']->post and $post_id = $GLOBALS['wp_query']->post->ID;
+			}
+
+			if ( $post_id > 0 && get_post_type( $post_id ) === $this->slug )
+			{
+				$steps = (array) $this->get_cookie( 'wpfunnel_steps' );
+
+				if ( isset( $steps[ $post_id ] ) )
+				{
+					$this->assign_steps( $post_id );
+
+					foreach ( $this->steps[ $post_id ] as $i => $post )
+					{
+						if ( $post->ID === (int) $steps[ $post_id ] )
+						{
+							wp_redirect( add_query_arg( 'page', $i + 1, get_permalink( $post_id ) ), 302 );
+							exit;
+						}
+					}
+				}
+			}
+		}
 	}
 
 	public function added_wp_link_pages( $parsed_args )

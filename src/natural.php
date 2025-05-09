@@ -96,7 +96,7 @@ class Natural_Funnel_Type extends Dynamic_Funnel_Type
 
 			if ( $post_id > 0 && get_post_type( $post_id ) === $this->slug )
 			{
-				$steps = (array) get_user_option( 'wpfunnel_steps' );
+				$steps = (array) $this->get_cookie( 'wpfunnel_steps' );
 
 				if ( isset( $steps[ $post_id ] ) )
 				{
@@ -204,16 +204,16 @@ class Natural_Funnel_Type extends Dynamic_Funnel_Type
 		return $block_template;
 	}
 
-	private function update_user( $user, $funnel, $step )
+	private function update_user( $funnel, $step )
 	{
-		$steps = (array) get_user_option( 'wpfunnel_steps', $user );
-		$permissions = (array) get_user_option( 'wpfunnel_permissions', $user );
+		$steps = (array) $this->get_cookie( 'wpfunnel_steps' );
+		$permissions = (array) $this->get_cookie( 'wpfunnel_permissions' );
 
 		$permissions[] = sprintf( self::PERM_PATTERN, $funnel, $step );
-		update_user_option( $user, 'wpfunnel_permissions', array_unique( $permissions ) );
+		$this->set_cookie( 'wpfunnel_permissions', array_unique( $permissions ) );
 
 		$steps[ $funnel ] = (string) $step;
-		update_user_option( $user, 'wpfunnel_steps', $steps );
+		$this->set_cookie( 'wpfunnel_steps', $steps );
 	}
 
 	// Populate funnel steps using content_pagination filter
@@ -240,7 +240,6 @@ class Natural_Funnel_Type extends Dynamic_Funnel_Type
 		{
 			$funnel = $query->posts[0]->ID;
 			$page = $query->generate_postdata( $funnel )['page'];
-			$user = get_current_user_id();
 			$step = null;
 
 			$this->assign_steps( $funnel );
@@ -248,12 +247,12 @@ class Natural_Funnel_Type extends Dynamic_Funnel_Type
 			if ( $page <= count( $this->steps[ $funnel ] ) )
 			{
 				$step = $this->steps[ $funnel ][ $page - 1 ]->ID;
-				$steps = (array) get_user_option( 'wpfunnel_steps', $user );
+				$steps = (array) $this->get_cookie( 'wpfunnel_steps' );
 			}
 
 			if ( isset( $step ) && ( 1 === wp_verify_nonce( isset( $_GET['funnel_nonce'] ) ? $_GET['funnel_nonce'] : '', sprintf( self::PERM_PATTERN, $funnel, $step ) ) || !isset( $steps[ $funnel ] ) && $page === 1 || (int) $steps[ $funnel ] === $step ) )
 			{
-				$this->update_user( $user, $funnel, $step );
+				$this->update_user( $funnel, $step );
 				$this->assign_steps( $funnel, true );
 
 				status_header( 200 );
@@ -292,12 +291,11 @@ class Natural_Funnel_Type extends Dynamic_Funnel_Type
 			else
 			{
 				$this->steps[ $id ] = array();
-				$user = get_current_user_id();
 
 				foreach ( $query->posts as $step )
 				{
 					$permission = true;
-					$permissions = (array) get_user_option( 'wpfunnel_permissions', $user );
+					$permissions = (array) $this->get_cookie( 'wpfunnel_permissions' );
 
 					foreach ( $query->posts as $other_step )
 					{
@@ -310,6 +308,34 @@ class Natural_Funnel_Type extends Dynamic_Funnel_Type
 					$permission and $this->steps[ $id ][] = $step;
 				}
 			}
+		}
+	}
+
+	// Store the user's current step in the funnel using cookies
+	private function set_cookie( $cookie_name, $cookie_value )
+	{
+		if ( is_user_logged_in() )
+		{
+			update_user_option( get_current_user_id(), $cookie_name, $cookie_value );
+		}
+		else
+		{
+			$cookie_value = maybe_serialize( $cookie_value );
+			setcookie( $cookie_name, $cookie_value, time() + 30 * DAY_IN_SECONDS, COOKIEPATH, COOKIE_DOMAIN, is_ssl(), true );
+			$_COOKIE[ $cookie_name ] = addslashes( $cookie_value );
+		}
+	}
+
+	// Get the user's current step from the cookie or user option
+	private function get_cookie( $cookie_name )
+	{
+		if ( is_user_logged_in() )
+		{
+			return get_user_option( $cookie_name, get_current_user_id() );
+		}
+		else
+		{
+			return isset( $_COOKIE[ $cookie_name ] ) ? maybe_unserialize( wp_unslash( $_COOKIE[ $cookie_name ] ) ) : false;
 		}
 	}
 

@@ -71,6 +71,9 @@ class Natural_Funnel_Type extends Dynamic_Funnel_Type
 
 		// Add pre_handle_404 filter
 		add_filter( 'pre_handle_404', array( $this, 'handle_404' ), 10, 2 );
+
+		// Use wp_link_pages_link filter to include nonces in pagination links
+		add_filter( 'wp_link_pages_link', array( $this, 'add_nonces_to_pagination_links' ), 10, 2 );
 	}
 
 	public function added_wp_link_pages( $parsed_args )
@@ -162,16 +165,16 @@ class Natural_Funnel_Type extends Dynamic_Funnel_Type
 		return $block_template;
 	}
 
-	private function update_user( $user, $funnel, $step )
+	private function update_user( $funnel, $step )
 	{
-		$steps = (array) get_user_option( 'wpfunnel_steps', $user );
-		$permissions = (array) get_user_option( 'wpfunnel_permissions', $user );
+		$steps = (array) $this->get_cookie( 'wpfunnel_steps' );
+		$permissions = (array) $this->get_cookie( 'wpfunnel_permissions' );
 
 		$permissions[] = sprintf( self::PERM_PATTERN, $funnel, $step );
-		update_user_option( $user, 'wpfunnel_permissions', array_unique( $permissions ) );
+		$this->set_cookie( 'wpfunnel_permissions', array_unique( $permissions ) );
 
 		$steps[ $funnel ] = (string) $step;
-		update_user_option( $user, 'wpfunnel_steps', $steps );
+		$this->set_cookie( 'wpfunnel_steps', $steps );
 	}
 
 	// Populate funnel steps using content_pagination filter
@@ -198,23 +201,20 @@ class Natural_Funnel_Type extends Dynamic_Funnel_Type
 		{
 			$funnel = $query->posts[0]->ID;
 			$page = $query->generate_postdata( $funnel )['page'];
-			$user = get_current_user_id();
+			$step = null;
 
 			$this->assign_steps( $funnel );
 
 			if ( $page <= count( $this->steps[ $funnel ] ) )
 			{
-				$this->update_user( $user, $funnel, $this->steps[ $funnel ][ $page - 1 ]->ID );
+				$step = $this->steps[ $funnel ][ $page - 1 ]->ID;
+				$steps = (array) $this->get_cookie( 'wpfunnel_steps' );
+			}
+
+			if ( isset( $step ) && ( 1 === wp_verify_nonce( isset( $_GET['funnel_nonce'] ) ? $_GET['funnel_nonce'] : '', sprintf( self::PERM_PATTERN, $funnel, $step ) ) || !isset( $steps[ $funnel ] ) && $page === 1 || (int) $steps[ $funnel ] === $step ) )
+			{
+				$this->update_user( $funnel, $step );
 				$this->assign_steps( $funnel, true );
-
-				$nonces = array();
-
-				foreach ( $this->steps[ $funnel ] as $step )
-				{
-					$nonces[ (string) $step->ID ] = uniqid();
-				}
-
-				update_user_option( $user, 'wpfunnel_nonces', $nonces );
 
 				status_header( 200 );
 			}
@@ -252,12 +252,11 @@ class Natural_Funnel_Type extends Dynamic_Funnel_Type
 			else
 			{
 				$this->steps[ $id ] = array();
-				$user = get_current_user_id();
 
 				foreach ( $query->posts as $step )
 				{
 					$permission = true;
-					$permissions = (array) get_user_option( 'wpfunnel_permissions', $user );
+					$permissions = (array) $this->get_cookie( 'wpfunnel_permissions' );
 
 					foreach ( $query->posts as $other_step )
 					{
@@ -271,5 +270,53 @@ class Natural_Funnel_Type extends Dynamic_Funnel_Type
 				}
 			}
 		}
+	}
+
+	// Store the user's current step in the funnel using cookies
+	private function set_cookie( $cookie_name, $cookie_value )
+	{
+		if ( is_user_logged_in() )
+		{
+			update_user_option( get_current_user_id(), $cookie_name, $cookie_value );
+		}
+		else
+		{
+			setcookie( $cookie_name, $cookie_value, time() + 30 * DAY_IN_SECONDS, COOKIEPATH, COOKIE_DOMAIN, is_ssl(), true );
+			$_COOKIE[ $cookie_name ] = $cookie_value;
+		}
+	}
+
+	// Get the user's current step from the cookie or user option
+	private function get_cookie( $cookie_name )
+	{
+		if ( is_user_logged_in() )
+		{
+			return get_user_option( $cookie_name, get_current_user_id() );
+		}
+		else
+		{
+			return isset( $_COOKIE[ $cookie_name ] ) ? $_COOKIE[ $cookie_name ] : false;
+		}
+	}
+
+	// Add nonces to pagination links
+	public function add_nonces_to_pagination_links( $link, $i )
+	{
+		if ( $i > 0 && get_post_type() === $this->slug )
+		{
+			$funnel = get_the_ID();
+			$this->assign_steps( $funnel );
+
+			if ( $i <= count( $this->steps[ $funnel ] ) )
+			{
+				$step = $this->steps[ $funnel ][ $i - 1 ]->ID;
+
+				$link = preg_replace_callback( '/href=["\']([^"\']+)["\']/', function( $matches ) use ( $funnel, $step ) {
+					return 'href="' . esc_url( add_query_arg( 'funnel_nonce', wp_create_nonce( sprintf( self::PERM_PATTERN, $funnel, $step ) ), $matches[1] ) ) . '"';
+				}, $link );
+			}
+		}
+
+		return $link;
 	}
 }

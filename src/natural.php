@@ -320,8 +320,9 @@ class Natural_Funnel_Type extends Dynamic_Funnel_Type
 		}
 		else
 		{
+			$cookie_value = maybe_serialize( $cookie_value );
 			setcookie( $cookie_name, $cookie_value, time() + 30 * DAY_IN_SECONDS, COOKIEPATH, COOKIE_DOMAIN, is_ssl(), true );
-			$_COOKIE[ $cookie_name ] = $cookie_value;
+			$_COOKIE[ $cookie_name ] = addslashes( $cookie_value );
 		}
 	}
 
@@ -334,7 +335,7 @@ class Natural_Funnel_Type extends Dynamic_Funnel_Type
 		}
 		else
 		{
-			return isset( $_COOKIE[ $cookie_name ] ) ? $_COOKIE[ $cookie_name ] : false;
+			return isset( $_COOKIE[ $cookie_name ] ) ? maybe_unserialize( wp_unslash( $_COOKIE[ $cookie_name ] ) ) : false;
 		}
 	}
 

@@ -204,15 +204,15 @@ class Natural_Funnel_Type extends Dynamic_Funnel_Type
 	{
 		$template = $request['id'] ? get_block_template( $request['id'], 'wp_template' ) : null;
 
-		if ( isset( $template ) && $template->source === 'custom' && $template->wp_id > 0 )
+		if ( isset( $template ) && isset( $changes->post_name ) && $template->source === 'custom' && $template->wp_id > 0 )
 		{
 			$this->create_query();
 
 			foreach ( $this->query->posts as $post )
 			{
-				if ( $post->ID === $template->wp_id )
+				if ( $post->ID === $template->wp_id && $template->slug === $changes->post_name )
 				{
-					$changes->post_name = preg_replace( '/^' . $template->slug, 'single-' . $this->slug . '-/', '', $changes->post_name );
+					$changes->post_name = preg_replace( '/^' . 'single-' . $this->slug . '-/', '', $changes->post_name );
 					break;
 				}
 			}

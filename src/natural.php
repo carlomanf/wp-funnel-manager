@@ -49,6 +49,7 @@ class Natural_Funnel_Type extends Dynamic_Funnel_Type
 
 		$this->interior_args['publicly_queryable'] = false;
 		$this->interior_args['capabilities'] = $this->exterior_args['capabilities'];
+		$this->interior_args['supports'] = array_diff( $this->interior_args['supports'], array( 'thumbnail', 'excerpt', 'comments', 'custom-fields' ) );
 	}
 
 	public function register()
@@ -77,6 +78,9 @@ class Natural_Funnel_Type extends Dynamic_Funnel_Type
 
 		// Redirect to current step if nonce is not valid
 		add_action( 'template_redirect', array( $this, 'redirect_to_current_step' ) );
+
+		// Retain funnel slug when updating template
+		add_filter( 'rest_pre_insert_wp_template', array( $this, 'retain_funnel_slug' ), 10, 2 );
 	}
 
 	public function redirect_to_current_step()
@@ -149,32 +153,24 @@ class Natural_Funnel_Type extends Dynamic_Funnel_Type
 		}
 	}
 
-	public function add_template( $query_result, $query, $template_type )
+	protected function construct_template( &$template, $funnel )
+	{
+		parent::construct_template( $template, 'single-' . $this->slug . '-' . $funnel->post_name );
+
+		$template->wp_id       = $funnel->ID;
+		$template->content     = $funnel->post_content;
+		$template->description = empty( $funnel->post_excerpt ) ? $funnel->post_title . ' is a WP Funnel Manager funnel.' : $funnel->post_excerpt;
+		$template->title       = $funnel->post_title;
+		$template->author      = $funnel->post_author;
+	}
+
+	public function add_templates( $query_result, $query, $template_type )
 	{
 		$this->create_query();
 
 		foreach ( $this->query->posts as $funnel )
 		{
-			if ( $template_type === 'wp_template' && (
-				!isset( $query['slug__in'] ) || in_array( 'single-' . $this->slug . '-' . $funnel->post_name, $query['slug__in'], true )
-			) && (
-				!isset( $query['wp_id'] ) || (int) $query['wp_id'] === $funnel->ID
-			) )
-			{
-				$id = wp_get_theme()->get_stylesheet() . '//single-' . $this->slug . '-' . $funnel->post_name;
-				$replace_key = count( $query_result );
-
-				foreach ( array_keys( $query_result ) as $key )
-				{
-					if ( $query_result[ $key ]->id === $id )
-					{
-						$replace_key = $key;
-						break;
-					}
-				}
-
-				$this->construct_template( $query_result[ $replace_key ], 'single-' . $this->slug . '-' . $funnel->post_name, $funnel->post_title, $funnel->post_content );
-			}
+			$this->add_template( $query_result, $query, $template_type, 'single-' . $this->slug . '-' . $funnel->post_name, $funnel->ID, $funnel );
 		}
 
 		return $query_result;
@@ -186,7 +182,7 @@ class Natural_Funnel_Type extends Dynamic_Funnel_Type
 		{
 			$this->create_query();
 
-			$funnel_slug = substr( $id, strrpos( $id, '-' ) + 1 );
+			$funnel_slug = substr( $id, strlen( wp_get_theme()->get_stylesheet() . '//single-' . $this->slug . '-' ) );
 			$funnel = null;
 
 			foreach ( $this->query->posts as $post )
@@ -198,10 +194,31 @@ class Natural_Funnel_Type extends Dynamic_Funnel_Type
 				}
 			}
 
-			isset( $funnel ) and $this->construct_template( $block_template, 'single-' . $this->slug . '-' . $funnel_slug, $funnel->post_title, $funnel->post_content );
+			isset( $funnel ) and $this->construct_template( $block_template, $funnel );
 		}
 
 		return $block_template;
+	}
+
+	public function retain_funnel_slug( $changes, $request )
+	{
+		$template = $request['id'] ? get_block_template( $request['id'], 'wp_template' ) : null;
+
+		if ( isset( $template ) && $template->source === 'custom' && $template->wp_id > 0 )
+		{
+			$this->create_query();
+
+			foreach ( $this->query->posts as $post )
+			{
+				if ( $post->ID === $template->wp_id )
+				{
+					$changes->post_name = preg_replace( '/^' . $template->slug, 'single-' . $this->slug . '-/', '', $changes->post_name );
+					break;
+				}
+			}
+		}
+
+		return $changes;
 	}
 
 	private function update_user( $funnel, $step )

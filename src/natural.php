@@ -81,6 +81,9 @@ class Natural_Funnel_Type extends Dynamic_Funnel_Type
 
 		// Retain funnel slug when updating template
 		add_filter( 'rest_pre_insert_wp_template', array( $this, 'retain_funnel_slug' ), 10, 2 );
+
+		// Delete funnel steps when deleting funnel
+		add_action( 'before_delete_post', array( $this, 'delete_funnel_steps' ), 10, 2 );
 	}
 
 	public function redirect_to_current_step()
@@ -375,5 +378,23 @@ class Natural_Funnel_Type extends Dynamic_Funnel_Type
 		}
 
 		return $link;
+	}
+
+	public function delete_funnel_steps( $post_id, $post )
+	{
+		if ( $post->post_type === $this->slug )
+		{
+			$steps = new \WP_Query( 'posts_per_page=-1&post_status=any,trash,auto-draft&post_type=' . $this->interior_slug . '&post_parent=' . $post_id );
+
+			foreach ( $steps->posts as $step )
+			{
+				wp_delete_post( $step->ID, true );
+			}
+		}
+
+		if ( $post->post_type === $this->slug || $post->post_type === 'revision' && get_post_type( $post->post_parent ) === $this->slug )
+		{
+			$GLOBALS['wpdb']->update( $GLOBALS['wpdb']->posts, array( 'post_parent' => 0 ), array( 'post_parent' => $post_id, 'post_type' => 'attachment' ) );
+		}
 	}
 }

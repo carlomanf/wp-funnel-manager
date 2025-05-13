@@ -347,7 +347,7 @@ class Dynamic_Funnel_Type extends Legacy_Funnel_Type
 
 			foreach ( $interiors->posts as $interior )
 			{
-				wp_update_post( array( 'ID' => $interior->ID, 'post_author' => $post->post_author ) );
+				$interior->post_author !== $post->post_author and wp_update_post( array( 'ID' => $interior->ID, 'post_author' => $post->post_author ) );
 			}
 		}
 	}

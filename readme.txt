@@ -1,8 +1,8 @@
 === WP Funnel Manager ===
 Contributors: manfcarlo
 Tags: funnel builder, page builder, sales funnels, landing page, marketing, sales, block, blocks, block editor, gutenberg, template, templates
-Tested up to: 5.9
-Stable tag: 1.3.2
+Tested up to: 6.8
+Stable tag: 1.4.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -24,27 +24,23 @@ This section describes how to install the plugin and get it working.
 
 == How to Use This Plugin ==
 
-First, ensure you are running at least version 5.8 of WordPress.
-
 After installation, you will find a Funnels screen in the WordPress admin menu. You will find the familiar editing screen to create your first funnel.
 
-Funnels are fully integrated with the new block templates feature of WordPress 5.8. This means you can edit the block template of your funnel by clicking on Template within the block editor. You can also add multiple funnels that share the same block template, or create new funnel types with their own block templates.
+Funnels are fully integrated with the block templates feature of WordPress. This means you can edit the block template of your funnel by clicking on Template within the block editor. You can also add multiple funnels that share the same block template, or create new funnel types with their own block templates.
 
 To add more steps to a funnel, find the funnel within its funnel type listing and click on Edit Steps. Then, click on Add New to add a new step to this funnel. Again, use the familiar editing screen to add content to this step. All steps of the funnel share the same block template.
 
 Repeat this process for each step of the funnel. Make sure you use the WordPress menu order feature to arrange the steps of your funnel in the correct order.
 
+== What Your Users Will Experience ==
+
+When a user opens up one of your funnels for the first time, they will see the first step of the funnel. Below the post content is a set of navigation links to access subsequent steps of the funnel.
+
+To access subsequent steps, they must navigate the funnel step by step sequentially. For example, they can only access step 3 after first navigating to step 2.
+
+If the user returns to the funnel later, their progress in the funnel will be remembered. If the user is signed in with an account, the progress never expires. For guests, the progress is stored for 30 days.
+
 == Frequently Asked Questions ==
-
-= How do I change "New Funnel Type 1" to something more meaningful? =
-
-1. Edit any funnel that belongs to the funnel type "New Funnel Type 1"
-1. Click on "Template" in the sidebar of the block editor to edit the block template
-1. At the top of the block editor, you can change the name of the block template
-
-= How do I delete the first step of my funnel without deleting the whole funnel? =
-
-Just go to the Funnels screen, find your funnel and click on Trash. This will delete the first step of the funnel only, and the second step of the funnel will take its place.
 
 = Why did my funnels disappear after switching theme? =
 
@@ -52,7 +48,6 @@ WP Funnel Manager requires the template editor, which is a new feature that some
 
 * Switch back to your previous theme that supports the template editor
 * Contact your theme author and request the theme to [support the template editor](https://make.wordpress.org/core/2021/06/16/introducing-the-template-editor-in-wordpress-5-8/)
-* You can also [activate this plugin](https://wordpress.org/plugins/template-editor/), which forces your theme to support the template editor
 
 Once your active theme supports the template editor, all your funnels will be automatically restored.
 
@@ -69,6 +64,13 @@ By deactivating your other plugins one by one, and attemping to re-activate WP F
 Through the WordPress support forum, or on the [GitHub page here.](https://github.com/carlomanf/wp-funnel-manager/issues)
 
 == Changelog ==
+
+= 1.4.0 =
+* New natural funnel type (#15)
+* Added user roles for funnel types (#17)
+* Added new post type for funnel types (#17)
+* Workaround solution for core ticket #52043
+* Minimum versions lifted to WordPress 6.6 and PHP 7.2
 
 = 1.3.2 =
 * Fixed the user roles, which were previously not working properly

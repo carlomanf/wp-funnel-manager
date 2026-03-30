@@ -70,8 +70,97 @@ class WP_Funnel_Manager
 		return $this->is_legacy;
 	}
 
-	public function register_funnel_types()
+	public function add_role( $roles )
 	{
+		foreach ( self::ROLES as $key => $value )
+		{
+			$roles->role_objects[ $key ] = new \WP_Role( $key, $value['capabilities'] );
+			$roles->role_names[ $key ] = $value['name'];
+		}
+	}
+
+	public function make_role_editable( $roles )
+	{
+		foreach ( self::ROLES as $key => $value )
+		{
+			if ( current_user_can( $key ) )
+			{
+				$roles[ $key ] = $value;
+			}
+		}
+
+		return $roles;
+	}
+
+	public function menu()
+	{
+		if ( $this->is_templated || $this->is_legacy )
+		{
+			$parent = $this->is_legacy ? 'edit.php?post_type=funnel' : 'edit.php?post_type=wpfunnel_head';
+			$parent_capability = $this->is_legacy ? 'edit_posts' : 'contribute_funnels';
+
+			// Workaround for core ticket #52043. If the bug is encountered, the menu for one of the funnel types needs to be registered separately here.
+			$type = Dynamic_Funnel_Type::get_type_for_parent_menu();
+
+			if ( isset( $type ) )
+			{
+				$parent = 'edit.php?post_type=' . $type->slug;
+				$parent_capability = 'edit_' . $type->slug . '_any';
+				add_menu_page( 'Funnels', 'Funnels', $parent_capability, $parent, '', 'dashicons-filter', 25 );
+				add_submenu_page( $parent, $type->title, $type->title, $parent_capability, $parent, '', 20 );
+			}
+		}
+	}
+
+	/**
+	 * Launch the initialization process.
+	 *
+	 * @since 1.0.3
+	 */
+	public function run()
+	{
+		add_action( 'admin_footer', array( $this, 'no_funnels_notice' ) );
+		add_action( 'admin_menu', array( $this, 'menu' ), 9 );
+		add_action( 'init', array( $this, 'register_post_types' ), 8 );
+		add_action( 'init', array( $this, 'database_upgrade' ), 20 );
+		add_action( 'wp_roles_init', array( $this, 'add_role' ) );
+		add_filter( 'editable_roles', array( $this, 'make_role_editable' ) );
+	}
+
+	public function register_post_types()
+	{
+		register_post_type(
+			'wpfunnel_type',
+			array(
+				'public' => false,
+				'hierarchical' => false,
+				'exclude_from_search' => true,
+				'publicly_queryable' => false,
+				'show_ui' => false,
+				'show_in_menu' => false,
+				'show_in_nav_menus' => false,
+				'show_in_admin_bar' => false,
+				'show_in_rest' => false,
+				'capabilities' => array(
+					'create_posts' => 'author_funnels',
+					'delete_posts' => 'contribute_funnels',
+					'delete_others_posts' => 'edit_funnels',
+					'delete_private_posts' => 'edit_funnels',
+					'delete_published_posts' => 'author_funnels',
+					'edit_posts' => 'contribute_funnels',
+					'edit_others_posts' => 'edit_funnels',
+					'edit_private_posts' => 'edit_funnels',
+					'edit_published_posts' => 'author_funnels',
+					'publish_posts' => 'author_funnels',
+					'read' => 'author_funnels',
+					'read_private_posts' => 'edit_funnels'
+				),
+				'map_meta_cap' => true,
+				'has_archive' => false,
+				'query_var' => false
+			)
+		);
+
 		if ( get_option( 'wpfunnel_ignore_legacy' ) )
 		{
 			$this->is_legacy = false;
@@ -135,99 +224,6 @@ class WP_Funnel_Manager
 		{
 			$type->register();
 		}
-	}
-
-	public function add_role( $roles )
-	{
-		foreach ( self::ROLES as $key => $value )
-		{
-			$roles->role_objects[ $key ] = new \WP_Role( $key, $value['capabilities'] );
-			$roles->role_names[ $key ] = $value['name'];
-		}
-	}
-
-	public function make_role_editable( $roles )
-	{
-		foreach ( self::ROLES as $key => $value )
-		{
-			if ( current_user_can( $key ) )
-			{
-				$roles[ $key ] = $value;
-			}
-		}
-
-		return $roles;
-	}
-
-	public function menu()
-	{
-		if ( $this->is_templated || $this->is_legacy )
-		{
-			$parent = $this->is_legacy ? 'edit.php?post_type=funnel' : 'edit.php?post_type=wpfunnel_head';
-			$parent_capability = $this->is_legacy ? 'edit_posts' : 'contribute_funnels';
-
-			// Workaround for core ticket #52043. If the bug is encountered, the menu for one of the funnel types needs to be registered separately here.
-			$type = Dynamic_Funnel_Type::get_type_for_parent_menu();
-
-			if ( isset( $type ) )
-			{
-				$parent = 'edit.php?post_type=' . $type->slug;
-				$parent_capability = 'edit_' . $type->slug . '_any';
-				add_menu_page( 'Funnels', 'Funnels', $parent_capability, $parent, '', 'dashicons-filter', 25 );
-				add_submenu_page( $parent, $type->title, $type->title, $parent_capability, $parent, '', 20 );
-			}
-		}
-	}
-
-	/**
-	 * Launch the initialization process.
-	 *
-	 * @since 1.0.3
-	 */
-	public function run()
-	{
-		add_action( 'admin_footer', array( $this, 'no_funnels_notice' ) );
-		add_action( 'admin_menu', array( $this, 'menu' ), 9 );
-		add_action( 'init', array( $this, 'register_post_types' ), 8 );
-		add_action( 'init', array( $this, 'database_upgrade' ), 20 );
-		add_action( 'after_setup_theme', array( $this, 'register_funnel_types' ) );
-		add_action( 'wp_roles_init', array( $this, 'add_role' ) );
-		add_filter( 'editable_roles', array( $this, 'make_role_editable' ) );
-	}
-
-	public function register_post_types()
-	{
-		register_post_type(
-			'wpfunnel_type',
-			array(
-				'public' => false,
-				'hierarchical' => false,
-				'exclude_from_search' => true,
-				'publicly_queryable' => false,
-				'show_ui' => false,
-				'show_in_menu' => false,
-				'show_in_nav_menus' => false,
-				'show_in_admin_bar' => false,
-				'show_in_rest' => false,
-				'capabilities' => array(
-					'create_posts' => 'author_funnels',
-					'delete_posts' => 'contribute_funnels',
-					'delete_others_posts' => 'edit_funnels',
-					'delete_private_posts' => 'edit_funnels',
-					'delete_published_posts' => 'author_funnels',
-					'edit_posts' => 'contribute_funnels',
-					'edit_others_posts' => 'edit_funnels',
-					'edit_private_posts' => 'edit_funnels',
-					'edit_published_posts' => 'author_funnels',
-					'publish_posts' => 'author_funnels',
-					'read' => 'author_funnels',
-					'read_private_posts' => 'edit_funnels'
-				),
-				'map_meta_cap' => true,
-				'has_archive' => false,
-				'query_var' => false
-			)
-		);
 	}
 
 	public function get_db_version()

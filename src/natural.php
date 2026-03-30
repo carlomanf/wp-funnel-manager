@@ -59,7 +59,7 @@ class Natural_Funnel_Type extends Dynamic_Funnel_Type
 		remove_filter( 'editable_roles', array( $this, 'make_role_editable' ) );
 		remove_filter( 'map_meta_cap', array( $this, 'assign_editor_to_owner' ), 10, 4 );
 		remove_filter( 'single_template_hierarchy', array( $this, 'apply_template_to_interior' ) );
-		remove_action( 'wp_roles_init', array( $this, 'add_role' ) );
+		remove_action( 'init', array( $this, 'add_role' ) );
 		remove_action( 'init', array( $this, 'assign_menu' ), 9 );
 		remove_action( 'wp_trash_post', array( $this, 'trash_exterior_promote_interior' ) );
 

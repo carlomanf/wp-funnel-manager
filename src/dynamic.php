@@ -126,8 +126,7 @@ class Dynamic_Funnel_Type extends Legacy_Funnel_Type
 		add_filter( 'pre_get_block_template', array( $this, 'replace_template' ), 10, 3 );
 		add_action( 'save_post', array( $this, 'update_post_author' ), 10, 2 );
 		add_filter( 'single_template_hierarchy', array( $this, 'apply_template_to_interior' ) );
-		add_action( 'wp_roles_init', array( $this, 'add_role' ) );
-		add_filter( 'after_setup_theme', array( __CLASS__, 'regenerate_roles' ), 11 );
+		add_action( 'init', array( $this, 'add_role' ) );
 		add_action( 'init', array( $this, 'assign_menu' ), 9 );
 
 		remove_filter( 'page_row_actions', array( $this, 'funnel_interior_edit' ), 10, 2 );
@@ -166,12 +165,6 @@ class Dynamic_Funnel_Type extends Legacy_Funnel_Type
 				$this->exterior_args['show_in_menu'] = false;
 			}
 		}
-	}
-
-	public static function regenerate_roles()
-	{
-		$roles = wp_roles();
-		$roles->for_site( $roles->get_site_id() );
 	}
 
 	public function funnel_interior_permalink( $permalink, $post )
@@ -361,21 +354,24 @@ class Dynamic_Funnel_Type extends Legacy_Funnel_Type
 	}
 
 	// Register a role for this funnel type
-	public function add_role( $roles )
+	public function add_role()
 	{
-		$slug = $this->slug . '_editor';
+		// Add editor role.
+		if ( !get_role( $this->slug . '_editor' ) )
+		{
+			add_role( $this->slug . '_editor', $this->editor_role['name'], $this->editor_role['capabilities'] );
+		}
 
-		$roles->role_objects[ $slug ] = new \WP_Role( $slug, $this->editor_role['capabilities'] );
-		$roles->role_names[ $slug ] = $this->editor_role['name'];
+		// Add author role.
+		if ( !get_role( $this->slug . '_author' ) )
+		{
+			add_role( $this->slug . '_author', $this->author_role['name'], $this->author_role['capabilities'] );
+		}
 
-		$slug = $this->slug . '_author';
-
-		$roles->role_objects[ $slug ] = new \WP_Role( $slug, $this->author_role['capabilities'] );
-		$roles->role_names[ $slug ] = $this->author_role['name'];
-
-		$slug = $this->slug . '_contributor';
-
-		$roles->role_objects[ $slug ] = new \WP_Role( $slug, $this->contributor_role['capabilities'] );
-		$roles->role_names[ $slug ] = $this->contributor_role['name'];
+		// Add contributor role.
+		if ( !get_role( $this->slug . '_contributor' ) )
+		{
+			add_role( $this->slug . '_contributor', $this->contributor_role['name'], $this->contributor_role['capabilities'] );
+		}
 	}
 }

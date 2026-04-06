@@ -104,11 +104,10 @@ class Natural_Funnel_Type extends Dynamic_Funnel_Type
 			if ( $post_id > 0 && get_post_type( $post_id ) === $this->slug )
 			{
 				$steps = (array) $this->get_cookie( 'wpfunnel_steps' );
+				$this->assign_steps( $post_id );
 
 				if ( isset( $steps[ $post_id ] ) )
 				{
-					$this->assign_steps( $post_id );
-
 					foreach ( $this->steps[ $post_id ] as $i => $post )
 					{
 						if ( $post->ID === (int) $steps[ $post_id ] )
@@ -117,6 +116,12 @@ class Natural_Funnel_Type extends Dynamic_Funnel_Type
 							exit;
 						}
 					}
+				}
+
+				if ( count( $this->steps[ $post_id ] ) > 0 )
+				{
+					wp_redirect( get_permalink( $post_id ), 302 );
+					exit;
 				}
 			}
 		}
@@ -264,13 +269,26 @@ class Natural_Funnel_Type extends Dynamic_Funnel_Type
 
 			$this->assign_steps( $funnel );
 
-			if ( $page <= count( $this->steps[ $funnel ] ) )
+			if ( $page > 0 && $page <= count( $this->steps[ $funnel ] ) )
 			{
+				$correct_step = $this->steps[ $funnel ][ 0 ]->ID;
 				$step = $this->steps[ $funnel ][ $page - 1 ]->ID;
 				$steps = (array) $this->get_cookie( 'wpfunnel_steps' );
+				
+				if ( isset( $steps[ $funnel ] ) )
+				{
+					foreach ( $this->steps[ $funnel ] as $post )
+					{
+						if ( $post->ID === (int) $steps[ $funnel ] )
+						{
+							$correct_step = $post->ID;
+							break;
+						}
+					}
+				}
 			}
 
-			if ( isset( $step ) && ( 1 === wp_verify_nonce( isset( $_GET['funnel_nonce'] ) ? $_GET['funnel_nonce'] : '', sprintf( self::PERM_PATTERN, $funnel, $step ) ) || !isset( $steps[ $funnel ] ) && $page === 1 || (int) $steps[ $funnel ] === $step ) )
+			if ( isset( $step ) && isset( $correct_step ) && ( 1 === wp_verify_nonce( isset( $_GET['funnel_nonce'] ) ? $_GET['funnel_nonce'] : '', sprintf( self::PERM_PATTERN, $funnel, $step ) ) || $correct_step === $step ) )
 			{
 				$this->update_user( $funnel, $step );
 				$this->assign_steps( $funnel, true );

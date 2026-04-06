@@ -355,8 +355,36 @@ class Natural_Funnel_Type extends Dynamic_Funnel_Type
 		}
 		else
 		{
-			return isset( $_COOKIE[ $cookie_name ] ) ? maybe_unserialize( wp_unslash( $_COOKIE[ $cookie_name ] ) ) : false;
+			return isset( $_COOKIE[ $cookie_name ] ) ? $this->unserialize( wp_unslash( $_COOKIE[ $cookie_name ] ) ) : false;
 		}
+	}
+
+	// Custom unserialize function to enforce the correct cookie format
+	private function unserialize( $value )
+	{
+		$result = array();
+
+		if ( preg_match( '/^a:(\d+):{((?:i:\d+;s:\d+:"(?:[^"\\\\]|\\\\.)*";)*)}$/', $value, $matches ) )
+		{
+			if ( preg_match_all( '/i:(\d+);s:(\d+):"((?:[^"\\\\]|\\\\.)*)";/', $matches[2], $matches2, PREG_SET_ORDER ) && count( $matches2 ) === (int) $matches[1] )
+			{
+				foreach ( $matches2 as $match )
+				{
+					$str = stripcslashes( $match[3] );
+
+					if ( strlen( $str ) === (int) $match[2] && !array_key_exists( (int) $match[1], $result ) )
+					{
+						$result[ (int) $match[1] ] = $str;
+					}
+					else
+					{
+						return array();
+					}
+				}
+			}
+		}
+
+		return $result;
 	}
 
 	// Add nonces to pagination links

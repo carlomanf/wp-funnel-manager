@@ -418,7 +418,7 @@ class Natural_Funnel_Type extends Dynamic_Funnel_Type
 				$step = $this->steps[ $funnel ][ $i - 1 ]->ID;
 
 				$link = preg_replace_callback( '/href=["\']([^"\']+)["\']/', function( $matches ) use ( $funnel, $step ) {
-					return 'href="' . esc_url( add_query_arg( 'funnel_nonce', wp_create_nonce( sprintf( self::PERM_PATTERN, $funnel, $step ) ), $matches[1] ) ) . '"';
+					return 'href="' . esc_url( add_query_arg( 'funnel_nonce', wp_create_nonce( sprintf( self::PERM_PATTERN, $funnel, $step ) ), wp_specialchars_decode( $matches[1] ) ) ) . '"';
 				}, $link );
 			}
 		}

@@ -1,8 +1,8 @@
 === WP Funnel Manager ===
 Contributors: manfcarlo
 Tags: funnel builder, page builder, sales funnels, landing page, marketing, sales, block, blocks, block editor, gutenberg, template, templates
-Tested up to: 6.8
-Stable tag: 1.4.0
+Tested up to: 7.0
+Stable tag: 1.4.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -56,6 +56,11 @@ Once your active theme supports the template editor, all your funnels will be au
 Through the WordPress support forum, or on the [GitHub page here.](https://github.com/carlomanf/wp-funnel-manager/issues)
 
 == Changelog ==
+
+= 1.4.1 =
+* Enhanced cookie security
+* Multiple bug fixes for natural funnels
+* Better inter-plugin compatibility (#16)
 
 = 1.4.0 =
 * New natural funnel type (#15)

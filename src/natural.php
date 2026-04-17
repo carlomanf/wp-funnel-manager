@@ -103,7 +103,7 @@ class Natural_Funnel_Type extends Dynamic_Funnel_Type
 
 			if ( $post_id > 0 && get_post_type( $post_id ) === $this->slug )
 			{
-				$steps = (array) $this->get_cookie( 'wpfunnel_steps' );
+				$steps = $this->get_cookie( 'wpfunnel_steps' );
 				$this->assign_steps( $post_id );
 
 				if ( isset( $steps[ $post_id ] ) )
@@ -231,8 +231,8 @@ class Natural_Funnel_Type extends Dynamic_Funnel_Type
 
 	private function update_user( $funnel, $step )
 	{
-		$steps = (array) $this->get_cookie( 'wpfunnel_steps' );
-		$permissions = (array) $this->get_cookie( 'wpfunnel_permissions' );
+		$steps = $this->get_cookie( 'wpfunnel_steps' );
+		$permissions = $this->get_cookie( 'wpfunnel_permissions' );
 
 		$permissions[] = sprintf( self::PERM_PATTERN, $funnel, $step );
 		$this->set_cookie( 'wpfunnel_permissions', array_unique( $permissions ) );
@@ -273,7 +273,7 @@ class Natural_Funnel_Type extends Dynamic_Funnel_Type
 			{
 				$correct_step = $this->steps[ $funnel ][ 0 ]->ID;
 				$step = $this->steps[ $funnel ][ $page - 1 ]->ID;
-				$steps = (array) $this->get_cookie( 'wpfunnel_steps' );
+				$steps = $this->get_cookie( 'wpfunnel_steps' );
 				
 				if ( isset( $steps[ $funnel ] ) )
 				{
@@ -333,7 +333,7 @@ class Natural_Funnel_Type extends Dynamic_Funnel_Type
 				foreach ( $query->posts as $step )
 				{
 					$permission = true;
-					$permissions = (array) $this->get_cookie( 'wpfunnel_permissions' );
+					$permissions = $this->get_cookie( 'wpfunnel_permissions' );
 
 					foreach ( $query->posts as $other_step )
 					{
@@ -369,12 +369,14 @@ class Natural_Funnel_Type extends Dynamic_Funnel_Type
 	{
 		if ( is_user_logged_in() )
 		{
-			return get_user_option( $cookie_name, get_current_user_id() );
+			$value = get_user_option( $cookie_name, get_current_user_id() );
 		}
 		else
 		{
-			return isset( $_COOKIE[ $cookie_name ] ) ? $this->unserialize( wp_unslash( $_COOKIE[ $cookie_name ] ) ) : false;
+			$value = isset( $_COOKIE[ $cookie_name ] ) ? $this->unserialize( wp_unslash( $_COOKIE[ $cookie_name ] ) ) : false;
 		}
+
+		return is_array( $value ) ? $value : array();
 	}
 
 	// Custom unserialize function to enforce the correct cookie format

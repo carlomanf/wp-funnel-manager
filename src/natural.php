@@ -10,6 +10,7 @@ class Natural_Funnel_Type extends Dynamic_Funnel_Type
 	private $added_wp_link_pages = array();
 	private $query = null;
 	private $steps = array();
+	protected $tail_args = array();
 	const PERM_PATTERN = '%2$d_funnel_%1$d';
 
 	public function __construct()
@@ -50,6 +51,10 @@ class Natural_Funnel_Type extends Dynamic_Funnel_Type
 		$this->interior_args['publicly_queryable'] = false;
 		$this->interior_args['capabilities'] = $this->exterior_args['capabilities'];
 		$this->interior_args['supports'] = array_diff( $this->interior_args['supports'], array( 'thumbnail', 'excerpt', 'comments', 'custom-fields' ) );
+
+		$this->tail_args = $this->interior_args;
+		$this->tail_args['show_ui'] = false;
+		$this->tail_args['supports'] = array();
 	}
 
 	public function register()
@@ -84,6 +89,12 @@ class Natural_Funnel_Type extends Dynamic_Funnel_Type
 
 		// Delete funnel steps when deleting funnel
 		add_action( 'before_delete_post', array( $this, 'delete_funnel_steps' ), 10, 2 );
+	}
+
+	public function register_taxonomies()
+	{
+		parent::register_taxonomies();
+		register_post_type( 'wpfunnel_tail', $this->tail_args );
 	}
 
 	public function redirect_to_current_step()
@@ -313,39 +324,36 @@ class Natural_Funnel_Type extends Dynamic_Funnel_Type
 	{
 		if ( !isset( $this->steps[ $id ] ) || $force )
 		{
-			 $query = new \WP_Query( array(
-				'post_type' => $this->interior_slug,
-				'post_parent' => $id,
-				'posts_per_page' => -1,
-				'orderby' => 'menu_order',
-				'order' => 'ASC',
-				'post_status' => 'publish'
-			) );
+			$this->steps[ $id ] = array();
+
+			$callback = 'get_permission';
+			$post_parent = get_post( $id );
+
+			do {
+				$steps = $this->get_by_post_parent( $post_parent->ID, 'step' );
 
 			if ( current_user_can( 'edit_post', $id ) )
-			{
-				$this->steps[ $id ] = $query->posts;
-			}
-			else
-			{
-				$this->steps[ $id ] = array();
-
-				foreach ( $query->posts as $step )
 				{
+					$this->steps[ $id ] = array_merge( $this->steps[ $id ], $steps );
 					$permission = true;
+				}
+				else
+				{
 					$permissions = $this->get_cookie( 'wpfunnel_permissions' );
 
-					foreach ( $query->posts as $other_step )
+					foreach ( $steps as $step )
 					{
-						if ( $other_step->menu_order < $step->menu_order )
-						{
-							$permission = $permission && in_array( sprintf( self::PERM_PATTERN, $id, $other_step->ID ), $permissions, true );
-						}
+						$permission = call_user_func( array( $this, $callback ), $permissions, $post_parent->ID, $step->menu_order );
+						$permission and $this->steps[ $id ][] = $step;
 					}
 
-					$permission and $this->steps[ $id ][] = $step;
+					$permission = $this->get_permission( $permissions, $post_parent->ID );
 				}
+
+				$callback = 'get_permission_recursive';
+				$post_parent = $post_parent->post_parent && $permission ? get_post( $post_parent->post_parent ) : null;
 			}
+			while ( isset( $post_parent ) && get_post_type( $post_parent ) === $this->tail_slug );
 		}
 	}
 
@@ -444,5 +452,121 @@ class Natural_Funnel_Type extends Dynamic_Funnel_Type
 		{
 			$GLOBALS['wpdb']->update( $GLOBALS['wpdb']->posts, array( 'post_parent' => 0 ), array( 'post_parent' => $post_id, 'post_type' => 'attachment' ) );
 		}
+	}
+
+	private function get_by_post_parent( $post_parent, $post_type )
+	{
+		$query = new \WP_Query( array(
+			'post_type' => 'wpfunnel_' . $post_type,
+			'post_parent' => $post_parent,
+			'posts_per_page' => -1,
+			'orderby' => 'menu_order',
+			'order' => 'ASC',
+			'post_status' => 'publish'
+		) );
+
+		return $query->posts;
+	}
+
+	private function get_funnels_by_tail_or_head( $id )
+	{
+		$post = get_post( $id );
+
+		if ( isset( $post ) && in_array( $post->post_type, array( 'wpfunnel_head', 'wpfunnel_tail' ), true ) )
+		{
+			if ( $post->post_type === 'wpfunnel_head' )
+			{
+				return array( $post );
+			}
+			else
+			{
+				$funnels = array();
+
+				$query = new \WP_Query( array(
+					'post_type' => 'wpfunnel_head',
+					'posts_per_page' => -1,
+					'post_status' => 'publish'
+				) );
+
+				foreach ( $query->posts as $funnel )
+				{
+					$tail = $funnel->post_parent ? get_post( $funnel->post_parent ) : null;
+
+					while ( isset( $tail ) && $tail->post_type === 'wpfunnel_tail' )
+					{
+						if ( $tail->ID === $id )
+						{
+							$funnels[] = $funnel;
+						}
+
+						$tail = $tail->post_parent ? get_post( $tail->post_parent ) : null;
+					}
+				}
+
+				return $funnels;
+			}
+		}
+
+		return array();
+	}
+
+	private function get_permission( $permissions, $id, $order = null )
+	{
+		foreach ( $this->get_by_post_parent( $id, 'step' ) as $step )
+		{
+			if ( !isset( $order ) || $step->menu_order < $order )
+			{
+				$permission = false;
+
+				foreach ( $this->get_funnels_by_tail_or_head( $id ) as $funnel )
+				{
+					if ( in_array( sprintf( self::PERM_PATTERN, $funnel->ID, $step->ID ), $permissions, true ) )
+					{
+						$permission = true;
+						break;
+					}
+				}
+
+				if ( !$permission )
+				{
+					return false;
+				}
+			}
+		}
+
+		return true;
+	}
+
+	private function get_permission_recursive( $permissions, $id, $order = null )
+	{
+		$permission = $this->get_permission( $permissions, $id, $order );
+
+		if ( $permission )
+		{
+			foreach ( $this->get_by_post_parent( $id, 'head' ) as $head )
+			{
+				$permission = $this->get_permission( $permissions, $head->ID );
+
+				if ( $permission )
+				{
+					break;
+				}
+			}
+
+			if ( !$permission )
+			{
+				foreach ( $this->get_by_post_parent( $id, 'tail' ) as $tail )
+				{
+					$permission = $this->get_permission_recursive( $permissions, $tail->ID );
+
+					if ( $permission )
+					{
+						break;
+					}
+				}
+			}
+		}
+
+		return $permission;
 	}
 }

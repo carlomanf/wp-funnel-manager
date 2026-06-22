@@ -353,7 +353,7 @@ class Natural_Funnel_Type extends Dynamic_Funnel_Type
 				$callback = 'get_permission_recursive';
 				$post_parent = $post_parent->post_parent && $permission ? get_post( $post_parent->post_parent ) : null;
 			}
-			while ( isset( $post_parent ) && get_post_type( $post_parent ) === $this->tail_slug );
+			while ( isset( $post_parent ) && get_post_type( $post_parent ) === 'wpfunnel_tail' );
 		}
 	}
 

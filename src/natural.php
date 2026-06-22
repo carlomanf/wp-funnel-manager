@@ -92,6 +92,10 @@ class Natural_Funnel_Type extends Dynamic_Funnel_Type
 
 		// Include tail steps in the admin step listing for funnels with a tail
 		add_action( 'pre_get_posts', array( $this, 'include_tail_steps_in_admin' ) );
+
+		// Add merge bulk action for funnels
+		add_filter( "bulk_actions-edit-{$this->slug}", array( $this, 'add_merge_bulk_action' ) );
+		add_filter( "handle_bulk_actions-edit-{$this->slug}", array( $this, 'handle_merge_bulk_action' ), 10, 3 );
 	}
 
 	public function register_taxonomies()
@@ -253,6 +257,66 @@ class Natural_Funnel_Type extends Dynamic_Funnel_Type
 
 		$steps[ $funnel ] = (string) $step;
 		$this->set_cookie( 'wpfunnel_steps', $steps );
+	}
+
+	public function add_merge_bulk_action( $bulk_actions )
+	{
+		$bulk_actions['merge'] = __( 'Merge', 'wpfunnel' );
+		return $bulk_actions;
+	}
+
+	public function handle_merge_bulk_action( $redirect_to, $action, $post_ids )
+	{
+		if ( $action === 'merge' )
+		{
+			$valid_funnels = array();
+			foreach ( $post_ids as $post_id )
+			{
+				$post = get_post( $post_id );
+				$slug = $this->slug;
+				$post_id = 0;
+
+				while ( isset( $post ) )
+				{
+					$post_id = $post->ID;
+
+					if ( $post->post_type !== $slug || !current_user_can( 'edit_post', $post ) )
+					{
+						continue 2;
+					}
+					else
+					{
+						$slug = 'wpfunnel_tail';
+						$post = get_post_parent( $post );
+					}
+				}
+
+				if ( $post_id > 0 )
+				{
+					$valid_funnels[] = $post_id;
+				}
+			}
+
+			if ( !empty( $valid_funnels ) )
+			{
+				$tail_id = wp_insert_post( array(
+					'post_type' => 'wpfunnel_tail',
+					'post_status' => 'publish'
+				) );
+
+				if ( is_int( $tail_id ) && $tail_id > 0 )
+				{
+					foreach ( $valid_funnels as $post_id )
+					{
+						wp_update_post( array( 'ID' => $post_id, 'post_parent' => $tail_id ) );
+					}
+
+					return add_query_arg( array( 'post_type' => $this->interior_slug, 'post_parent' => $tail_id ), admin_url( 'edit.php' ) );
+				}
+			}
+		}
+
+		return $redirect_to;
 	}
 
 	// Populate funnel steps using content_pagination filter

@@ -89,6 +89,9 @@ class Natural_Funnel_Type extends Dynamic_Funnel_Type
 
 		// Delete funnel steps when deleting funnel
 		add_action( 'before_delete_post', array( $this, 'delete_funnel_steps' ), 10, 2 );
+
+		// Include tail steps in the admin step listing for funnels with a tail
+		add_action( 'pre_get_posts', array( $this, 'include_tail_steps_in_admin' ) );
 	}
 
 	public function register_taxonomies()
@@ -354,6 +357,44 @@ class Natural_Funnel_Type extends Dynamic_Funnel_Type
 				$post_parent = $post_parent->post_parent && $permission ? get_post( $post_parent->post_parent ) : null;
 			}
 			while ( isset( $post_parent ) && get_post_type( $post_parent ) === 'wpfunnel_tail' );
+		}
+	}
+
+	public function include_tail_steps_in_admin( $query )
+	{
+		if ( !is_admin() || !$query->is_main_query() || $query->get( 'post_type' ) !== $this->interior_slug )
+		{
+			return;
+		}
+
+		$head_id = (int) $query->get( 'post_parent' );
+		if ( empty( $head_id ) )
+		{
+			return;
+		}
+
+		$head = get_post( $head_id );
+		if ( !isset( $head ) || $head->post_type !== $this->slug )
+		{
+			return;
+		}
+
+		if ( !empty( $head->post_parent ) && get_post_type( $head->post_parent ) === 'wpfunnel_tail' )
+		{
+			// Collect the head plus any tail ancestors (support tail chains)
+			$post_parent_in = array( $head_id );
+			$ancestor = $head;
+
+			while ( !empty( $ancestor->post_parent ) && get_post_type( $ancestor->post_parent ) === 'wpfunnel_tail' )
+			{
+				$post_parent_in[] = $ancestor->post_parent;
+				$ancestor = get_post( $ancestor->post_parent );
+			}
+
+			$query->set( 'post_parent', '' );
+			$query->set( 'post_parent__in', $post_parent_in );
+			$query->set( 'orderby', 'post_parent__in menu_order' );
+			$query->set( 'order', 'ASC' );
 		}
 	}
 

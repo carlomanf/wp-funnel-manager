@@ -259,6 +259,45 @@ class Natural_Funnel_Type extends Dynamic_Funnel_Type
 		$this->set_cookie( 'wpfunnel_steps', $steps );
 	}
 
+	public function funnel_interior_edit( $actions, $post )
+	{
+		$actions = parent::funnel_interior_edit( $actions, $post );
+
+		// Handle funnel steps (wpfunnel_step)
+		if ( $post->post_type === $this->interior_slug && !empty( $post->post_parent ) && current_user_can( 'edit_post', $post->ID ) )
+		{
+			// Get all steps in the funnel
+			$this->assign_steps( $post->post_parent );
+
+			// Find this step's position
+			$step_index = null;
+			foreach ( $this->steps[ $post->post_parent ] as $index => $step )
+			{
+				if ( $step->ID === $post->ID )
+				{
+					$step_index = $index;
+					break;
+				}
+			}
+
+			if ( isset( $step_index ) )
+			{
+				// Calculate traffic for this step and previous
+				$traffic = $this->get_step_traffic( $post->post_parent, $post->ID, $step_index );
+				$next_traffic = $step_index < count( $this->steps[ $post->post_parent ] ) - 1 ? $this->get_step_traffic( $post->post_parent, $this->steps[ $post->post_parent ][ $step_index + 1 ]->ID, $step_index + 1 ) : 0;
+				$conversion = $traffic > 0 ? round( ( $next_traffic / $traffic ) * 100, 1 ) : 0;
+
+				// Get monetary value
+				$value = get_post_meta( $post->ID, '_wpfunnel_monetary_value', true );
+				$value_display = $value ? '$' . number_format( $value, 2 ) : 'N/A';
+
+				$actions['conversion_data'] = sprintf( 'Traffic: %d | Converts at: %s%% | Worth: %s', $traffic, $conversion, $value_display );
+			}
+		}
+
+		return $actions;
+	}
+
 	public function add_merge_bulk_action( $bulk_actions )
 	{
 		$bulk_actions['merge'] = __( 'Merge', 'wpfunnel' );
@@ -319,6 +358,26 @@ class Natural_Funnel_Type extends Dynamic_Funnel_Type
 		return $redirect_to;
 	}
 
+	private function get_step_traffic( $funnel_id, $step_id, $step_index )
+	{
+		$user_count = 0;
+
+		global $wpdb;
+		$reaches = $wpdb->get_col( "SELECT meta_value FROM $wpdb->usermeta WHERE meta_key = '{$wpdb->prefix}wpfunnel_reach'" );
+
+		foreach ( $reaches as $reach )
+		{
+			$reach = $this->unserialize( $reach );
+
+			if ( isset( $reach[ $funnel_id ] ) && $this->get_funnel_step_index( $funnel_id, (int) $reach[ $funnel_id ] ) >= $step_index )
+			{
+				$user_count++;
+			}
+		}
+
+		return $user_count;
+	}
+
 	// Populate funnel steps using content_pagination filter
 	public function populate_funnel_steps( $pages, $post )
 	{
@@ -371,6 +430,24 @@ class Natural_Funnel_Type extends Dynamic_Funnel_Type
 				$this->update_user( $funnel, $step );
 				$this->assign_steps( $funnel, true );
 
+				$index = $this->get_funnel_step_index( $funnel, $step );
+
+				if ( is_user_logged_in() )
+				{
+					$reach = get_user_option( 'wpfunnel_reach', get_current_user_id() );
+
+					if ( !is_array( $reach ) )
+					{
+						$reach = array();
+					}
+
+					if ( !isset( $reach[ $funnel ] ) || $this->get_funnel_step_index( $funnel, (int) $reach[ $funnel ] ) < $index )
+					{
+						$reach[ $funnel ] = (string) $step;
+						update_user_option( get_current_user_id(), 'wpfunnel_reach', $reach );
+					}
+				}
+
 				status_header( 200 );
 			}
 			else
@@ -399,7 +476,7 @@ class Natural_Funnel_Type extends Dynamic_Funnel_Type
 			do {
 				$steps = $this->get_by_post_parent( $post_parent->ID, 'step' );
 
-			if ( current_user_can( 'edit_post', $id ) )
+				if ( current_user_can( 'edit_post', $id ) )
 				{
 					$this->steps[ $id ] = array_merge( $this->steps[ $id ], $steps );
 					$permission = true;
@@ -460,6 +537,30 @@ class Natural_Funnel_Type extends Dynamic_Funnel_Type
 			$query->set( 'orderby', 'post_parent__in menu_order' );
 			$query->set( 'order', 'ASC' );
 		}
+	}
+
+	/**
+	 * Gets the index of a specific step in a funnel.
+	 * The current user's permissions are used to generate the available steps.
+	 *
+	 * @since 1.5.0
+	 *
+	 * @param int $funnel_id
+	 * @param int $step_id
+	 *
+	 * @return int The index of the step, or -1 if not present
+	 */
+	private function get_funnel_step_index( $funnel_id, $step_id )
+	{
+		foreach ( $this->steps[ $funnel_id ] as $index => $step )
+		{
+			if ( $step->ID === $step_id )
+			{
+				return $index;
+			}
+		}
+
+		return -1;
 	}
 
 	// Store the user's current step in the funnel using cookies

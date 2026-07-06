@@ -96,6 +96,10 @@ class Natural_Funnel_Type extends Dynamic_Funnel_Type
 		// Add merge bulk action for funnels
 		add_filter( "bulk_actions-edit-{$this->slug}", array( $this, 'add_merge_bulk_action' ) );
 		add_filter( "handle_bulk_actions-edit-{$this->slug}", array( $this, 'handle_merge_bulk_action' ), 10, 3 );
+
+		// Add merge new funnel action
+		add_action( 'admin_action_wpfunnel_merge_new_funnel', array( $this, 'handle_merge_new_funnel' ) );
+		add_action( 'admin_notices', array( $this, 'merge_admin_notice' ) );
 	}
 
 	public function register_taxonomies()
@@ -285,34 +289,49 @@ class Natural_Funnel_Type extends Dynamic_Funnel_Type
 		$funnel_id = $this->child_new_interior();
 
 		// Handle funnel steps (wpfunnel_step)
-		if ( $post->post_type === $this->interior_slug && get_post_type( $funnel_id ) === $this->slug && current_user_can( 'edit_post', $funnel_id ) )
+		if ( $post->post_type === $this->interior_slug && current_user_can( 'edit_post', $funnel_id ) )
 		{
-			// Get all steps in the funnel
-			$this->assign_steps( $funnel_id );
-
-			// Find this step's position
-			$step_index = null;
-			foreach ( $this->steps[ $funnel_id ] as $index => $step )
+			if ( get_post_type( $funnel_id ) === $this->slug )
 			{
-				if ( $step->ID === $post->ID )
+				// Get all steps in the funnel
+				$this->assign_steps( $funnel_id );
+
+				// Find this step's position
+				$step_index = null;
+				foreach ( $this->steps[ $funnel_id ] as $index => $step )
 				{
-					$step_index = $index;
-					break;
+					if ( $step->ID === $post->ID )
+					{
+						$step_index = $index;
+						break;
+					}
+				}
+
+				if ( isset( $step_index ) )
+				{
+					// Calculate traffic for this step and previous
+					$traffic = $this->get_step_traffic( $funnel_id, $post->ID, $step_index );
+					$next_traffic = $step_index < count( $this->steps[ $funnel_id ] ) - 1 ? $this->get_step_traffic( $funnel_id, $this->steps[ $funnel_id ][ $step_index + 1 ]->ID, $step_index + 1 ) : 0;
+					$conversion = $traffic > 0 ? round( ( $next_traffic / $traffic ) * 100, 1 ) : 0;
+
+					// Get monetary value
+					$value = get_post_meta( $post->ID, '_wpfunnel_monetary_value', true );
+					$value_display = $value ? '$' . number_format( $value, 2 ) : 'N/A';
+
+					$actions['conversion_data'] = sprintf( 'Traffic: %d | Converts at: %s%% | Worth: %s', $traffic, $conversion, $value_display );
 				}
 			}
 
-			if ( isset( $step_index ) )
+			$parent = get_post_parent( $post );
+
+			if ( isset( $parent ) && in_array( $parent->post_type, array( $this->slug, 'wpfunnel_tail' ), true ) )
 			{
-				// Calculate traffic for this step and previous
-				$traffic = $this->get_step_traffic( $funnel_id, $post->ID, $step_index );
-				$next_traffic = $step_index < count( $this->steps[ $funnel_id ] ) - 1 ? $this->get_step_traffic( $funnel_id, $this->steps[ $funnel_id ][ $step_index + 1 ]->ID, $step_index + 1 ) : 0;
-				$conversion = $traffic > 0 ? round( ( $next_traffic / $traffic ) * 100, 1 ) : 0;
+				$url = wp_nonce_url(
+					admin_url( 'admin.php?action=wpfunnel_merge_new_funnel&step_id=' . $post->ID ),
+					'wpfunnel_merge_new_funnel_' . $post->ID
+				);
 
-				// Get monetary value
-				$value = get_post_meta( $post->ID, '_wpfunnel_monetary_value', true );
-				$value_display = $value ? '$' . number_format( $value, 2 ) : 'N/A';
-
-				$actions['conversion_data'] = sprintf( 'Traffic: %d | Converts at: %s%% | Worth: %s', $traffic, $conversion, $value_display );
+				$actions['merge_new_funnel'] = '<a href="' . esc_url( $url ) . '">' . esc_html__( 'Merge New Funnel', 'wpfunnel' ) . '</a>';
 			}
 		}
 
@@ -377,6 +396,101 @@ class Natural_Funnel_Type extends Dynamic_Funnel_Type
 		}
 
 		return $redirect_to;
+	}
+
+	public function handle_merge_new_funnel()
+	{
+		$referer = wp_get_referer();
+		$redirect = $referer ? $referer : admin_url( 'edit.php?post_type=' . $this->interior_slug );
+		$head_id = 0;
+
+		if ( !empty( $_REQUEST['step_id'] ) )
+		{
+			$step_id = (int) $_REQUEST['step_id'];
+			check_admin_referer( 'wpfunnel_merge_new_funnel_' . $step_id );
+			$source_parent = get_post_parent( $step_id );
+
+			if ( isset( $source_parent ) && in_array( $source_parent->post_type, array( $this->slug, 'wpfunnel_tail' ), true ) && current_user_can( 'edit_post', $source_parent ) )
+			{
+				$sequence = new \WP_Query( array(
+					'post_type' => $this->interior_slug,
+					'post_parent' => $source_parent->ID,
+					'posts_per_page' => -1,
+					'orderby' => 'menu_order',
+					'order' => 'ASC',
+					'post_status' => 'any'
+				) );
+
+				$index = -1;
+				foreach ( $sequence->posts as $position => $item )
+				{
+					if ( $item->ID === $step_id )
+					{
+						$index = $position;
+						break;
+					}
+				}
+
+				if ( $index >= 0 )
+				{
+					$subsequent = array_slice( $sequence->posts, $index );
+
+					$tail_id = wp_insert_post( array(
+						'post_type' => 'wpfunnel_tail',
+						'post_status' => 'publish',
+						'post_author' => $source_parent->post_author,
+						'post_parent' => $source_parent->post_parent
+					) );
+
+					if ( $tail_id > 0 )
+					{
+						foreach ( $subsequent as $menu_order => $step )
+						{
+							wp_update_post( array(
+								'ID' => $step->ID,
+								'post_parent' => $tail_id,
+								'menu_order' => $menu_order + 1
+							) );
+						}
+
+						wp_update_post( array( 'ID' => $source_parent->ID, 'post_parent' => $tail_id ) );
+
+						$head_id = wp_insert_post( array(
+							'post_type' => $this->slug,
+							'post_parent' => $tail_id,
+							'post_title' => sprintf( __( 'Merged Funnel (%s)', 'wpfunnel' ), get_the_title( $step_id ) ),
+							'post_status' => 'auto-draft'
+						) );
+					}
+				}
+			}
+		}
+
+		if ( $head_id > 0 )
+		{
+			wp_redirect( admin_url( 'post.php?post=' . $head_id . '&action=edit' ) );
+		}
+		else
+		{
+			wp_redirect( add_query_arg( array( 'message' => 'merge_new_funnel_failed' ), $redirect ) );
+		}
+
+		exit;
+	}
+
+	public function merge_admin_notice()
+	{
+		if ( !isset( $_REQUEST['message'] ) )
+		{
+			return;
+		}
+
+		switch ( $_REQUEST['message'] )
+		{
+			case 'merge_new_funnel_failed':
+				printf( '<div class="notice notice-error is-dismissible"><p>%s</p></div>', esc_html__( 'Merging new funnel failed.', 'wpfunnel' ) );
+				break;
+		}
 	}
 
 	private function get_step_traffic( $funnel_id, $step_id, $step_index )

@@ -186,8 +186,18 @@ class Dynamic_Funnel_Type extends Legacy_Funnel_Type
 	 */
 	protected function child_setup_interior( $data, $exterior )
 	{
-		$data['post_author'] = $exterior->post_author;
-		
+		if ( !isset( $data['post_author'] ) || $data['post_author'] !== $exterior->post_author )
+		{
+			if ( did_action( 'plugins_loaded' ) && !current_user_can( 'edit_post', $exterior ) )
+			{
+				wp_die( 'You do not have permission to assign this ' . $this->interior_args['labels']['singular_name'] . ' to ' . $this->exterior_args['label'] . '.' );
+			}
+			else
+			{
+				$data['post_author'] = $exterior->post_author;
+			}
+		}
+
 		return $data;
 	}
 

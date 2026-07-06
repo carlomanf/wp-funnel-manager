@@ -83,9 +83,10 @@ class Legacy_Funnel_Type
 	 * Returns the post if valid, or false if no valid post.
 	 *
 	 * @since 1.2.0
+	 * @since 1.5.0 Access changed to protected
 	 */
-	private function validate_post_parent( $post_parent_id )
-	{	
+	protected function validate_post_parent( $post_parent_id )
+	{
 		if ( !( $post = get_post( $post_parent_id ) ) )
 			return false;
 
@@ -93,9 +94,6 @@ class Legacy_Funnel_Type
 			return false;
 
 		if ( $post->post_status == 'trash' || $post->post_status == 'auto-draft' )
-			return false;
-
-		if ( !current_user_can( 'edit_post', $post ) )
 			return false;
 
 		return $post;
@@ -117,13 +115,18 @@ class Legacy_Funnel_Type
 		if ( $this->interior_slug != get_query_var( 'post_type' ) )
 			return $url;
 
-		$post_parent = get_query_var( 'post_parent' );
+		$post_parent = $this->child_new_interior();
 
 		// Validate post parent
 		if ( !$this->validate_post_parent( $post_parent ) )
 			return $url;
 
 		return esc_url( $url . '&post_parent=' . $post_parent );
+	}
+
+	protected function child_new_interior()
+	{
+		return (int) get_query_var( 'post_parent' );
 	}
 
 	/**
@@ -211,7 +214,7 @@ class Legacy_Funnel_Type
 
 		if ( !( $exterior = $this->validate_post_parent( $data['post_parent'] ) ) )
 		{
-			wp_die( 'Funnel Interiors must be assigned to a Funnel. Please try again.' );
+			wp_die( $this->interior_args['label'] . ' must be assigned to ' . $this->exterior_args['label'] . '. Please try again.' );
 		}
 
 		$data = $this->child_setup_interior( $data, $exterior );

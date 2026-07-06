@@ -104,6 +104,26 @@ class Natural_Funnel_Type extends Dynamic_Funnel_Type
 		register_post_type( 'wpfunnel_tail', $this->tail_args );
 	}
 
+	protected function validate_post_parent( $post_parent_id )
+	{
+		if ( !( $post = get_post( $post_parent_id ) ) )
+			return false;
+
+		if ( $post->post_status == 'trash' || $post->post_status == 'auto-draft' )
+			return false;
+
+		if ( $post->post_type === 'wpfunnel_tail' )
+			return $post;
+
+		return parent::validate_post_parent( $post_parent_id );
+	}
+
+	protected function child_new_interior()
+	{
+		$post_parent__in = get_query_var( 'post_parent__in' );
+		return is_array( $post_parent__in ) && isset( $post_parent__in[0] ) ? (int) $post_parent__in[0] : parent::child_new_interior();
+	}
+
 	public function redirect_to_current_step()
 	{
 		if ( is_404() )

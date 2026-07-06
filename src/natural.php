@@ -282,16 +282,17 @@ class Natural_Funnel_Type extends Dynamic_Funnel_Type
 	public function funnel_interior_edit( $actions, $post )
 	{
 		$actions = parent::funnel_interior_edit( $actions, $post );
+		$funnel_id = $this->child_new_interior();
 
 		// Handle funnel steps (wpfunnel_step)
-		if ( $post->post_type === $this->interior_slug && !empty( $post->post_parent ) && current_user_can( 'edit_post', $post->ID ) )
+		if ( $post->post_type === $this->interior_slug && get_post_type( $funnel_id ) === $this->slug && current_user_can( 'edit_post', $funnel_id ) )
 		{
 			// Get all steps in the funnel
-			$this->assign_steps( $post->post_parent );
+			$this->assign_steps( $funnel_id );
 
 			// Find this step's position
 			$step_index = null;
-			foreach ( $this->steps[ $post->post_parent ] as $index => $step )
+			foreach ( $this->steps[ $funnel_id ] as $index => $step )
 			{
 				if ( $step->ID === $post->ID )
 				{
@@ -303,8 +304,8 @@ class Natural_Funnel_Type extends Dynamic_Funnel_Type
 			if ( isset( $step_index ) )
 			{
 				// Calculate traffic for this step and previous
-				$traffic = $this->get_step_traffic( $post->post_parent, $post->ID, $step_index );
-				$next_traffic = $step_index < count( $this->steps[ $post->post_parent ] ) - 1 ? $this->get_step_traffic( $post->post_parent, $this->steps[ $post->post_parent ][ $step_index + 1 ]->ID, $step_index + 1 ) : 0;
+				$traffic = $this->get_step_traffic( $funnel_id, $post->ID, $step_index );
+				$next_traffic = $step_index < count( $this->steps[ $funnel_id ] ) - 1 ? $this->get_step_traffic( $funnel_id, $this->steps[ $funnel_id ][ $step_index + 1 ]->ID, $step_index + 1 ) : 0;
 				$conversion = $traffic > 0 ? round( ( $next_traffic / $traffic ) * 100, 1 ) : 0;
 
 				// Get monetary value

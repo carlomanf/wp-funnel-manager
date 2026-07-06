@@ -422,6 +422,7 @@ class Natural_Funnel_Type extends Dynamic_Funnel_Type
 				) );
 
 				$index = -1;
+
 				foreach ( $sequence->posts as $position => $item )
 				{
 					if ( $item->ID === $step_id )
@@ -431,7 +432,10 @@ class Natural_Funnel_Type extends Dynamic_Funnel_Type
 					}
 				}
 
-				if ( $index >= 0 )
+				// Avoid duplicating a tail that already exists.
+				$tail_id = $index === 0 && $source_parent->post_type === 'wpfunnel_tail' ? $source_parent->ID : 0;
+
+				if ( $index > 0 )
 				{
 					$subsequent = array_slice( $sequence->posts, $index );
 
@@ -454,14 +458,17 @@ class Natural_Funnel_Type extends Dynamic_Funnel_Type
 						}
 
 						wp_update_post( array( 'ID' => $source_parent->ID, 'post_parent' => $tail_id ) );
-
-						$head_id = wp_insert_post( array(
-							'post_type' => $this->slug,
-							'post_parent' => $tail_id,
-							'post_title' => sprintf( __( 'Merged Funnel (%s)', 'wpfunnel' ), get_the_title( $step_id ) ),
-							'post_status' => 'auto-draft'
-						) );
 					}
+				}
+
+				if ( $tail_id > 0 )
+				{
+					$head_id = wp_insert_post( array(
+						'post_type' => $this->slug,
+						'post_parent' => $tail_id,
+						'post_title' => sprintf( __( 'Merged Funnel (%s)', 'wpfunnel' ), get_the_title( $step_id ) ),
+						'post_status' => 'auto-draft'
+					) );
 				}
 			}
 		}

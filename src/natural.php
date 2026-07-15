@@ -273,12 +273,14 @@ class Natural_Funnel_Type extends Dynamic_Funnel_Type
 
 	private function update_user( $funnel, $step )
 	{
+		if ( !current_user_can( 'edit_post', $funnel ) )
+		{
+			$permissions = $this->get_cookie( 'wpfunnel_permissions' );
+			$permissions[] = sprintf( self::PERM_PATTERN, $funnel, $step );
+			$this->set_cookie( 'wpfunnel_permissions', array_unique( $permissions ) );
+		}
+
 		$steps = $this->get_cookie( 'wpfunnel_steps' );
-		$permissions = $this->get_cookie( 'wpfunnel_permissions' );
-
-		$permissions[] = sprintf( self::PERM_PATTERN, $funnel, $step );
-		$this->set_cookie( 'wpfunnel_permissions', array_unique( $permissions ) );
-
 		$steps[ $funnel ] = (string) $step;
 		$this->set_cookie( 'wpfunnel_steps', $steps );
 	}
@@ -576,17 +578,20 @@ class Natural_Funnel_Type extends Dynamic_Funnel_Type
 
 				if ( is_user_logged_in() )
 				{
-					$reach = get_user_option( 'wpfunnel_reach', get_current_user_id() );
-
-					if ( !is_array( $reach ) )
+					if ( !current_user_can( 'edit_post', $funnel ) )
 					{
-						$reach = array();
-					}
+						$reach = get_user_option( 'wpfunnel_reach', get_current_user_id() );
 
-					if ( !isset( $reach[ $funnel ] ) || $this->get_funnel_step_index( $funnel, (int) $reach[ $funnel ] ) < $index )
-					{
-						$reach[ $funnel ] = (string) $step;
-						update_user_option( get_current_user_id(), 'wpfunnel_reach', $reach );
+						if ( !is_array( $reach ) )
+						{
+							$reach = array();
+						}
+
+						if ( !isset( $reach[ $funnel ] ) || $this->get_funnel_step_index( $funnel, (int) $reach[ $funnel ] ) < $index )
+						{
+							$reach[ $funnel ] = (string) $step;
+							update_user_option( get_current_user_id(), 'wpfunnel_reach', $reach );
+						}
 					}
 				}
 

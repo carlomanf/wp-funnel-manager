@@ -299,7 +299,7 @@ class Natural_Funnel_Type extends Dynamic_Funnel_Type
 				$this->assign_steps( $funnel_id );
 
 				// Find this step's position
-				$step_index = null;
+				$step_index = -1;
 				foreach ( $this->steps[ $funnel_id ] as $index => $step )
 				{
 					if ( $step->ID === $post->ID )
@@ -309,7 +309,7 @@ class Natural_Funnel_Type extends Dynamic_Funnel_Type
 					}
 				}
 
-				if ( isset( $step_index ) )
+				if ( $step_index >= 0 )
 				{
 					// Calculate traffic for this step and previous
 					$traffic = $this->get_step_traffic( $funnel_id, $post->ID, $step_index );
@@ -502,24 +502,41 @@ class Natural_Funnel_Type extends Dynamic_Funnel_Type
 		}
 	}
 
+	private function get_funnel_reach_data( $funnel_id, $meta_key )
+	{
+		$reach = get_post_meta( $funnel_id, $meta_key, true );
+		return is_array( $reach ) ? $reach : array();
+	}
+
+	private function update_funnel_reach_data( $funnel_id, $meta_key, $user_id, $step_id, $step_index )
+	{
+		$reaches = $this->get_funnel_reach_data( $funnel_id, $meta_key );
+
+		if ( !isset( $reaches[ $user_id ] ) || $this->get_funnel_step_index( $funnel_id, (int) $reaches[ $user_id ] ) < $step_index )
+		{
+			$reaches[ $user_id ] = (string) $step_id;
+			update_post_meta( $funnel_id, $meta_key, $reaches );
+		}
+	}
+
 	private function get_step_traffic( $funnel_id, $step_id, $step_index )
 	{
-		$user_count = 0;
+		$traffic = 0;
 
-		global $wpdb;
-		$reaches = $wpdb->get_col( "SELECT meta_value FROM $wpdb->usermeta WHERE meta_key = '{$wpdb->prefix}wpfunnel_reach'" );
-
-		foreach ( $reaches as $reach )
+		foreach ( array( '_wpfunnel_users_reach', '_wpfunnel_guests_reach' ) as $meta_key )
 		{
-			$reach = $this->unserialize( $reach );
+			$reaches = $this->get_funnel_reach_data( $funnel_id, $meta_key );
 
-			if ( isset( $reach[ $funnel_id ] ) && $this->get_funnel_step_index( $funnel_id, (int) $reach[ $funnel_id ] ) >= $step_index )
+			foreach ( $reaches as $reach )
 			{
-				$user_count++;
+				if ( $this->get_funnel_step_index( $funnel_id, (int) $reach ) >= $step_index )
+				{
+					$traffic++;
+				}
 			}
 		}
 
-		return $user_count;
+		return $traffic;
 	}
 
 	// Populate funnel steps using content_pagination filter
@@ -580,19 +597,19 @@ class Natural_Funnel_Type extends Dynamic_Funnel_Type
 				{
 					if ( !current_user_can( 'edit_post', $funnel ) )
 					{
-						$reach = get_user_option( 'wpfunnel_reach', get_current_user_id() );
-
-						if ( !is_array( $reach ) )
-						{
-							$reach = array();
-						}
-
-						if ( !isset( $reach[ $funnel ] ) || $this->get_funnel_step_index( $funnel, (int) $reach[ $funnel ] ) < $index )
-						{
-							$reach[ $funnel ] = (string) $step;
-							update_user_option( get_current_user_id(), 'wpfunnel_reach', $reach );
-						}
+						$this->update_funnel_reach_data( $funnel, '_wpfunnel_users_reach', get_current_user_id(), $step, $index );
 					}
+				}
+				else
+				{
+					if ( !isset( $_COOKIE['wpfunnel_guest_id'] ) )
+					{
+						$guest_id = wp_generate_password( 32, false );
+						setcookie( 'wpfunnel_guest_id', $guest_id, time() + 30 * DAY_IN_SECONDS, COOKIEPATH, COOKIE_DOMAIN, is_ssl(), true );
+						$_COOKIE['wpfunnel_guest_id'] = $guest_id;
+					}
+
+					$this->update_funnel_reach_data( $funnel, '_wpfunnel_guests_reach', $_COOKIE['wpfunnel_guest_id'], $step, $index );
 				}
 
 				status_header( 200 );
